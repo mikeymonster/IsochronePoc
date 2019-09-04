@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29215.179
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IsochronePoc", "IsochronePoc\IsochronePoc.csproj", "{A99E6809-4AF2-429E-A9E8-C82805BFDC52}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IsochronePoc.Application", "IsochronePoc.Application\IsochronePoc.Application.csproj", "{A0E10A4E-B468-4415-859B-0BBFCFEB59C1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A99E6809-4AF2-429E-A9E8-C82805BFDC52}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A99E6809-4AF2-429E-A9E8-C82805BFDC52}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A99E6809-4AF2-429E-A9E8-C82805BFDC52}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A99E6809-4AF2-429E-A9E8-C82805BFDC52}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A0E10A4E-B468-4415-859B-0BBFCFEB59C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A0E10A4E-B468-4415-859B-0BBFCFEB59C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A0E10A4E-B468-4415-859B-0BBFCFEB59C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A0E10A4E-B468-4415-859B-0BBFCFEB59C1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {505EA791-E253-4A28-B5E4-CC75EFC39725}
+	EndGlobalSection
+EndGlobal
