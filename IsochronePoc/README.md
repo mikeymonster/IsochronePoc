@@ -5,11 +5,6 @@ Get keys https://docs.traveltimeplatform.com/overview/getting-keys
 
 Login https://igeolise.3scale.net/admin
 
-Application ID: 06082171
-API key:  aad4f5a1c39529d2122a4224c4b952b4
-nBZthg1LR6Eveep1
-
-
 Sample search:
  https://app.traveltimeplatform.com/search/0_lng=-1.50812&0_tt=60&0_mode=driving&0_title=CV1%202WT%2C%20Coventry%2C%20England%2C%20United%20Kingdom&0_lat=52.40100&poi=Cinema
 
