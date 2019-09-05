@@ -27,13 +27,13 @@ namespace IsochronePoc
                 Console.WriteLine($"Google Api uri - {Configuration.GoogleMapsApiBaseUrl}");
                 Console.WriteLine($"Google Api key - {Configuration.GoogleMapsApiKey}");
 
-                await GetGoogleResult(@".\Data\TestVenues.csv");
+                await GetGoogleResult(@".\Data\LiveProviderVenues.csv");
 
                 //Console.WriteLine("Press Enter to continue, or any other key to exit");
                 //var key = Console.ReadKey().Key;
                 //if (key != ConsoleKey.Enter)
                 //{
-                //    return;
+                    return;
                 //}
 
 
@@ -124,6 +124,9 @@ namespace IsochronePoc
                 while (!reader.EndOfStream)
                 {
                     var line = await reader.ReadLineAsync();
+                    try
+                    {
+
                     var split = line.Split(',');
                     venues.Add(new Venue
                     {
@@ -131,6 +134,12 @@ namespace IsochronePoc
                         Longitude = decimal.Parse(split[1]),
                         Latitude = decimal.Parse(split[2])
                     });
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                        throw;
+                    }
                 }
             }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -30,6 +31,43 @@ namespace IsochronePoc.Application
         }
 
         public async Task Search(Venue origin, IList<Venue> venues)
+        {
+            const int batchSize = 80;
+
+            //var batches = new List<IList<Venue>>();
+            var batches = new Dictionary<int, IList<Venue>>();
+            var items = venues;
+            var batchNo = 0;
+            while (items.Any())
+            {
+                var batch = items.Take(batchSize);
+                batches.Add(++batchNo, batch.ToList());
+                items = items.Skip(batchSize).ToList();
+            }
+
+            var stopwatch = Stopwatch.StartNew();
+
+            Parallel.ForEach(batches, (batch) =>
+            {
+                //foreach (var batch in batches)
+                {
+                    Console.WriteLine($"Have batch {batch.Key} of size {batch.Value.Count}");
+
+                    //for (var i = 0; i < batch.Count; i++)
+                    //{
+                    //    Debug.WriteLine($"{i} {batch[i].Postcode}");
+                    //}
+
+                    //TODO: Get a result and add to a thread-safe collection
+                    SearchBatch(origin, batch.Value).GetAwaiter().GetResult();
+                }
+            });
+
+            stopwatch.Stop();
+            Console.WriteLine($"Ran {batches.Count} batches of {batchSize} ({venues.Count()}) in {stopwatch.ElapsedMilliseconds:#,###}ms");
+        }
+
+        private async Task SearchBatch(Venue origin, IList<Venue> venues)
         {
             //https://developers.google.com/maps/documentation/distance-matrix/intro
 
@@ -79,7 +117,7 @@ namespace IsochronePoc.Application
 
             //if (content.Length >= 150)
             //{
-                Console.WriteLine(content);
+            //Console.WriteLine(content);
             //}
 
             Debug.WriteLine(content);
