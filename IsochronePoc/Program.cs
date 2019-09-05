@@ -29,12 +29,12 @@ namespace IsochronePoc
 
                 await GetGoogleResult(@".\Data\TestVenues.csv");
 
-                Console.WriteLine("Press Enter to continue, or any other key to exit");
-                var key = Console.ReadKey().Key;
-                if (key != ConsoleKey.Enter)
-                {
-                    return;
-                }
+                //Console.WriteLine("Press Enter to continue, or any other key to exit");
+                //var key = Console.ReadKey().Key;
+                //if (key != ConsoleKey.Enter)
+                //{
+                //    return;
+                //}
 
 
                 /******************************************/
@@ -54,10 +54,11 @@ namespace IsochronePoc
                 Console.WriteLine();
                 Console.WriteLine("Locations string for SQL Query for sample data:");
                 var testData = await LoadJson(@".\Data\simple_CV1_2WT.json");
-                var sqlString = CreateSqlQuery(testData);
-                Console.WriteLine("");
-                Console.WriteLine($"{sqlString}");
-                Console.WriteLine("");
+                await WriteToSqlFile(CreateSqlQuery(testData), @".\Data\Spatial Query.sql");
+
+                //Console.WriteLine("");
+                //Console.WriteLine($"{sqlString}");
+                //Console.WriteLine("");
 
                 await WriteToCsv(testData, @".\Data\simple_CV1_2WT.csv");
             }
@@ -214,18 +215,58 @@ namespace IsochronePoc
         private static string CreateSqlQuery(IList<Location> data)
         {
             var sb = new StringBuilder();
-            foreach (var location in data.Reverse())
+
+            sb.AppendLine("WITH polygons");
+            sb.AppendLine("AS(SELECT 'p1' id,");
+            sb.Append("geography::STGeomFromText('polygon ((");
+
+            //https://bertwagner.com/2018/01/23/inverted-polygons-how-to-troubleshoot-sql-servers-left-hand-rule/
+            //Either write backwards, or add 
+            var isFirstItem = true;
+            for (var i = data.Count - 1; i >= 0; i--)
+            //for (var i = 0; i < data.Count; i++)
+            //foreach (var location in data.Reverse())
             {
-                if (sb.Length > 0)
+                //if (sb.Length > 0)
+                if (isFirstItem)
+                {
+                    isFirstItem = false;
+                }
+                else
                 {
                     sb.Append(", ");
                 }
-                sb.Append($"{location.Longitude} {location.Latitude}");
+
+                //sb.Append($"{location.Longitude} {location.Latitude}");
+                sb.Append($"{data[i].Longitude} {data[i].Latitude}");
                 //sb.Append($"{location.Latitude} {location.Longitude}");
             }
 
+            sb.AppendLine("))',");
+            sb.Append("4326) poly),");
+            //sb.AppendLine("4326).ReorientObject() poly),");
+
+            sb.AppendLine("points");
+            sb.AppendLine("AS(SELECT[Postcode], [Location] as p FROM ProviderVenue)");
+            sb.AppendLine("SELECT DISTINCT");
+            sb.AppendLine("       points.Postcode, ");
+            sb.AppendLine("       points.p.STAsText() as Location,	");
+            sb.AppendLine("       points.p.Lat as Latitude,");
+            sb.AppendLine("       points.p.Long as Longitude");
+            sb.AppendLine("FROM polygons");
+            sb.AppendLine("     RIGHT JOIN points ON polygons.poly.STIntersects(points.p) = 1");
+            sb.AppendLine("WHERE polygons.id IS NOT NULL;");
+
             //return "SELECT * FROM ProviderVenue";
             return sb.ToString();
+        }
+
+        private static async Task WriteToSqlFile(string query, string path)
+        {
+            using (var writer = File.CreateText(path))
+            {
+                await writer.WriteAsync(query);
+            }
         }
 
         private static async Task WriteToCsv(IList<Location> data, string path)
