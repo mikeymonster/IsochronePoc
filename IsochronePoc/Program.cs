@@ -33,7 +33,7 @@ namespace IsochronePoc
                 //var key = Console.ReadKey().Key;
                 //if (key != ConsoleKey.Enter)
                 //{
-                    return;
+                return;
                 //}
 
 
@@ -127,13 +127,13 @@ namespace IsochronePoc
                     try
                     {
 
-                    var split = line.Split(',');
-                    venues.Add(new Venue
-                    {
-                        Postcode = split[0],
-                        Longitude = decimal.Parse(split[1]),
-                        Latitude = decimal.Parse(split[2])
-                    });
+                        var split = line.Split(',');
+                        venues.Add(new Venue
+                        {
+                            Postcode = split[0],
+                            Longitude = decimal.Parse(split[1]),
+                            Latitude = decimal.Parse(split[2])
+                        });
                     }
                     catch (Exception e)
                     {

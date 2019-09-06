@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -8,6 +10,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace IsochronePoc.Application
 {
@@ -63,7 +66,7 @@ namespace IsochronePoc.Application
 
                     //TODO: Get a result and add to a thread-safe collection
                     var response = SearchBatch(origin, batch.Value).GetAwaiter().GetResult();
-                    if(response != null && 
+                    if (response != null &&
                        string.Compare(response.Status, "OK", StringComparison.OrdinalIgnoreCase) == 0)
                     {
                         lock (_listLocker)
@@ -120,16 +123,31 @@ namespace IsochronePoc.Application
 
             response.EnsureSuccessStatusCode();
 
-            var content = await response.Content.ReadAsStringAsync();
+            //var content = await response.Content.ReadAsStringAsync();
 
-            //if (content.Length >= 150)
-            //{
             //Console.WriteLine(content);
-            //}
-
             //Debug.WriteLine(content);
 
-            return null;
+            var settings = new JsonSerializerSettings
+            {
+                MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
+                DateParseHandling = DateParseHandling.None,
+                Converters =
+                {
+                    new IsoDateTimeConverter {DateTimeStyles = DateTimeStyles.AssumeUniversal}
+                }
+            };
+
+            using (var stream = await response.Content.ReadAsStreamAsync())
+            using (var reader = new StreamReader(stream))
+            using (var jsonReader = new JsonTextReader(reader))
+            {
+                var serializer = new JsonSerializer();
+                var result = (GoogleDistanceMatrixResponse)serializer.Deserialize(jsonReader,
+                        typeof(GoogleDistanceMatrixResponse));
+
+                return result;
+            }
         }
     }
 }
