@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -38,13 +39,12 @@ namespace IsochronePoc
 
 
                 /******************************************/
-
-
+                
                 //var dataPath = @".\Data\sample_isochrone.json";
                 //var data = await LoadJson(dataPath);
-                var data = await GetIsochrone("OX2 9GX", 51.742141M, -1.295653M);
-                var data2 = await GetIsochrone("CV1 2WT", 52.400997M, -1.508122M);
-                var data3 = await GetIsochrone("NE2 4RL", 54.98543M, -1.606414M);
+                //var data = await GetIsochrone("OX2 9GX", 51.742141M, -1.295653M);
+                //var data2 = await GetIsochrone("CV1 2WT", 52.400997M, -1.508122M);
+                //var data3 = await GetIsochrone("NE2 4RL", 54.98543M, -1.606414M);
                 //
                 //foreach (var location in data)
                 //{
@@ -110,7 +110,32 @@ namespace IsochronePoc
                 Latitude = 52.400997M,
                 Longitude = -1.508122M
             };
-            await client.Search(startPoint, venues);
+
+            var stopwatch = Stopwatch.StartNew();
+
+            var searchResults = await client.Search(startPoint, venues);
+
+            stopwatch.Stop();
+            Console.WriteLine();
+            Console.WriteLine($"Retrieved {searchResults.Count} search results in  in {stopwatch.ElapsedMilliseconds:#,###}ms");
+
+            Console.WriteLine("Results that could not be determined:");
+            foreach (var searchResult in searchResults.Where(x => x.Distance < 0 || x.TravelTime < 0))
+            {
+                Console.WriteLine($"{searchResult.Address} at {searchResult.Distance}{searchResult.DistanceUnits}, travel time {searchResult.TravelTimeString}");
+            }
+
+            foreach (var searchResult in searchResults.OrderByDescending(x => x.TravelTime))
+            {
+                //TODO: Check api docs - can we ask for miles?
+                if (searchResult.DistanceUnits != "km")
+                {
+                }
+
+                var distanceInKm = searchResult.Distance / 1000;
+                var distanceInMiles = searchResult.Distance / 1609.34;
+                Console.WriteLine($"{searchResult.Address} at {distanceInMiles:#.0}mi ({distanceInKm:#.0}km), travel time {searchResult.TravelTimeString}");
+            }
         }
 
         public static async Task<IList<Venue>> GetVenuesFromCsv(string path)
@@ -155,13 +180,9 @@ namespace IsochronePoc
             var result = await client.Search(postCode, latitude, longitude);
             //var path = @".\Data\sample_isochrone.json";
 
-            //using (var reader = File.OpenText(path))
-            //using (var jsonReader = new JsonTextReader(reader))
             using (var writer = File.CreateText(outputPath))
             using (var jsonWriter = new JsonTextWriter(writer))
             {
-                //var json = await JObject.LoadAsync(jsonReader);
-                //jsonWriter.WriteRaw(json.ToString());
                 jsonWriter.WriteRaw(result);
             }
 
@@ -170,15 +191,6 @@ namespace IsochronePoc
 
         public static async Task<IList<Location>> LoadJson(string path)
         {
-            //using (var stream = await responseMessage.Content.ReadAsStreamAsync())
-            //using (var reader = new StreamReader(stream))
-            //using (var jsonReader = new JsonTextReader(reader))
-            //{
-            //    var json = await JObject.LoadAsync(jsonReader);
-            //    var englandAndWalesHolidays = json
-            //        .SelectTokens(
-            //            "$.divisions.england-and-wales..[?(@.date)]");
-
             try
             {
                 using (var reader = File.OpenText(path))

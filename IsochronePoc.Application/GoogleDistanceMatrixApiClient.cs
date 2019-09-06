@@ -107,7 +107,15 @@ namespace IsochronePoc.Application
                     Console.WriteLine($"  Row has {row.Elements.Length} elements");
                     foreach (var element in row.Elements)
                     {
-                        Console.WriteLine($"    {element.Status}, {element.Distance.Text}: {element.Distance.Value}, {element.Duration.Text}: {element.Duration.Value}");
+                        try
+                        {
+                            Console.WriteLine($"    {element.Status}, {element.Distance?.Text}: {element.Distance?.Value}, {element.Duration?.Text}: {element.Duration?.Value}");
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e);
+                            throw;
+                        }
                     }
                 }
 
@@ -122,20 +130,29 @@ namespace IsochronePoc.Application
                     var element = currentRow.Elements[i];
                     var destination = item.DestinationAddresses[i];
 
-                    result.Add(new DistanceSearchResult
+                    try
                     {
-                        Address = destination,
-                        DistanceUnits = element.Distance.Text,
-                        Distance = element.Distance.Value,
-                        TravelTimeString = element.Duration.Text,
-                        //TravelTime = convertTime(element.Duration.Value),
-                        TravelTime = element.Duration.Value,
-                        Raw = $"{destination}, {element.Distance.Text}: {element.Distance.Value}, {element.Duration.Text}: {element.Duration.Value}"
-                    });
+                        result.Add(new DistanceSearchResult
+                        {
+                            Address = destination,
+                            DistanceUnits = element.Distance?.Text,
+                            Distance = element.Distance?.Value ?? -1,
+                            TravelTimeString = element.Duration?.Text,
+                            //TravelTime = convertTime(element.Duration.Value),
+                            TravelTime = element.Duration?.Value ?? -1,
+                            Raw = $"{destination}, {element.Distance?.Text}: {element.Distance?.Value}, {element.Duration?.Text}: {element.Duration?.Value}"
+                        });
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                        throw;
+                    }
+
                 }
             }
 
-            return Task.FromResult((IList<DistanceSearchResult>) result);
+            return Task.FromResult((IList<DistanceSearchResult>)result);
         }
 
         private Dictionary<int, IList<Venue>> CreateBatches(IList<Venue> venues, int batchSize)
