@@ -38,7 +38,35 @@ namespace IsochronePoc.Application
         {
             const int batchSize = 100; //Max client-side elements: 100
 
-            //var batches = new List<IList<Venue>>();
+            var batches = CreateBatches(venues, batchSize);
+
+            var results = new List<GoogleDistanceMatrixResponse>();
+
+            var stopwatch = Stopwatch.StartNew();
+
+            Parallel.ForEach(batches, async batch =>
+            {
+                var (key, value) = batch;
+                Console.WriteLine($"Processing batch {key} of size {value.Count}");
+
+                var response = await SearchBatch(origin, value);
+                if (response != null &&
+                   string.Compare(response.Status, "OK", StringComparison.OrdinalIgnoreCase) == 0)
+                {
+                    lock (_listLocker)
+                    {
+                        results.Add(response);
+                    }
+                }
+            });
+
+            stopwatch.Stop();
+            Console.WriteLine($"Ran {batches.Count} batches of {batchSize} ({venues.Count()}) in {stopwatch.ElapsedMilliseconds:#,###}ms");
+            Console.WriteLine($"Have {results.Count} results");
+        }
+
+        private static Dictionary<int, IList<Venue>> CreateBatches(IList<Venue> venues, int batchSize)
+        {
             var batches = new Dictionary<int, IList<Venue>>();
             var items = venues;
             var batchNo = 0;
@@ -49,37 +77,7 @@ namespace IsochronePoc.Application
                 items = items.Skip(batchSize).ToList();
             }
 
-            var results = new List<GoogleDistanceMatrixResponse>();
-
-            var stopwatch = Stopwatch.StartNew();
-
-            Parallel.ForEach(batches, (batch) =>
-            {
-                //foreach (var batch in batches)
-                {
-                    Console.WriteLine($"Have batch {batch.Key} of size {batch.Value.Count}");
-
-                    //for (var i = 0; i < batch.Count; i++)
-                    //{
-                    //    Debug.WriteLine($"{i} {batch[i].Postcode}");
-                    //}
-
-                    //TODO: Get a result and add to a thread-safe collection
-                    var response = SearchBatch(origin, batch.Value).GetAwaiter().GetResult();
-                    if (response != null &&
-                       string.Compare(response.Status, "OK", StringComparison.OrdinalIgnoreCase) == 0)
-                    {
-                        lock (_listLocker)
-                        {
-                            results.Add(response);
-                        }
-                    }
-                }
-            });
-
-            stopwatch.Stop();
-            Console.WriteLine($"Ran {batches.Count} batches of {batchSize} ({venues.Count()}) in {stopwatch.ElapsedMilliseconds:#,###}ms");
-            Console.WriteLine($"Have {results.Count} results");
+            return batches;
         }
 
         private async Task<GoogleDistanceMatrixResponse> SearchBatch(Venue origin, IList<Venue> venues)
@@ -124,7 +122,6 @@ namespace IsochronePoc.Application
             response.EnsureSuccessStatusCode();
 
             //var content = await response.Content.ReadAsStringAsync();
-
             //Console.WriteLine(content);
             //Debug.WriteLine(content);
 
