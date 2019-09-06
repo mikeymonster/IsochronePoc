@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 
 namespace IsochronePoc.Application
 {
-    public class TravelTimeApiClient
+    public class TravelTimeApiClient : ITravelTimeApiClient
     {
         private readonly HttpClient _httpClient;
         private readonly ApiConfiguration _configuration;

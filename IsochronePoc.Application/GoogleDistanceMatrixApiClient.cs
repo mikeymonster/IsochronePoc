@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -14,11 +13,11 @@ using Newtonsoft.Json.Converters;
 
 namespace IsochronePoc.Application
 {
-    public class GoogleDistanceMatrixApiClient
+    public class GoogleDistanceMatrixApiClient : IGoogleDistanceMatrixApiClient
     {
         private readonly HttpClient _httpClient;
         private readonly ApiConfiguration _configuration;
-        private static object _listLocker = new object();
+        private static readonly object _listLocker = new object();
 
         public GoogleDistanceMatrixApiClient(HttpClient httpClient, ApiConfiguration configuration)
         {
@@ -34,7 +33,7 @@ namespace IsochronePoc.Application
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
-        public async Task Search(Venue origin, IList<Venue> venues)
+        public async Task<IList<DistanceSearchResult>> Search(Venue origin, IList<Venue> venues)
         {
             const int batchSize = 100; //Max client-side elements: 100
             var batches = CreateBatches(venues, batchSize);
@@ -66,13 +65,16 @@ namespace IsochronePoc.Application
             {
                 Console.WriteLine($"{x.Rows.Length} - {x.DestinationAddresses.Length}");
             }
-            
+
             //results = results.Where(x => x.DestinationAddresses.Length < 100).ToList();
-            await BuildGoogleResults(results);
+            var distanceSearchResults = await BuildGoogleResults(results);
+            return distanceSearchResults;
         }
 
-        private async Task BuildGoogleResults(List<GoogleDistanceMatrixResponse> responses)
+        private Task<IList<DistanceSearchResult>> BuildGoogleResults(List<GoogleDistanceMatrixResponse> responses)
         {
+            var result = new List<DistanceSearchResult>();
+
             foreach (var item in responses)
             {
                 if (string.Compare(item.Status, "OK", StringComparison.OrdinalIgnoreCase) != 0)
@@ -96,6 +98,9 @@ namespace IsochronePoc.Application
                     Console.WriteLine($"  {destination}");
                 }
 
+                //Results are returned in rows, each row containing one origin paired with each destination.
+                //Since we know there is only one origin, we should be able to assume
+                //that the number of destinations == number of rows
                 Console.WriteLine("Rows:");
                 foreach (var row in item.Rows)
                 {
@@ -105,7 +110,32 @@ namespace IsochronePoc.Application
                         Console.WriteLine($"    {element.Status}, {element.Distance.Text}: {element.Distance.Value}, {element.Duration.Text}: {element.Duration.Value}");
                     }
                 }
+
+                //Func<string, TimeSpan> convertTime = (string x) =>
+                //{
+                //    return new TimeSpan(10000);
+                //};
+
+                var currentRow = item.Rows[0];
+                for (int i = 0; i < item.DestinationAddresses.Length; i++)
+                {
+                    var element = currentRow.Elements[i];
+                    var destination = item.DestinationAddresses[i];
+
+                    result.Add(new DistanceSearchResult
+                    {
+                        Address = destination,
+                        DistanceUnits = element.Distance.Text,
+                        Distance = element.Distance.Value,
+                        TravelTimeString = element.Duration.Text,
+                        //TravelTime = convertTime(element.Duration.Value),
+                        TravelTime = element.Duration.Value,
+                        Raw = $"{destination}, {element.Distance.Text}: {element.Distance.Value}, {element.Duration.Text}: {element.Duration.Value}"
+                    });
+                }
             }
+
+            return Task.FromResult((IList<DistanceSearchResult>) result);
         }
 
         private Dictionary<int, IList<Venue>> CreateBatches(IList<Venue> venues, int batchSize)
@@ -175,9 +205,9 @@ namespace IsochronePoc.Application
                     MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
                     DateParseHandling = DateParseHandling.None,
                     Converters =
-                {
-                    new IsoDateTimeConverter {DateTimeStyles = DateTimeStyles.AssumeUniversal}
-                }
+                    {
+                        new IsoDateTimeConverter {DateTimeStyles = DateTimeStyles.AssumeUniversal}
+                    }
                 };
 
                 using (var stream = await response.Content.ReadAsStreamAsync())
