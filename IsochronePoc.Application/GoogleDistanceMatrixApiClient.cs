@@ -37,9 +37,7 @@ namespace IsochronePoc.Application
         public async Task Search(Venue origin, IList<Venue> venues)
         {
             const int batchSize = 100; //Max client-side elements: 100
-
             var batches = CreateBatches(venues, batchSize);
-
             var results = new List<GoogleDistanceMatrixResponse>();
 
             var stopwatch = Stopwatch.StartNew();
@@ -50,8 +48,7 @@ namespace IsochronePoc.Application
                 Console.WriteLine($"Processing batch {key} of size {value.Count}");
 
                 var response = await SearchBatch(origin, value);
-                if (response != null &&
-                   string.Compare(response.Status, "OK", StringComparison.OrdinalIgnoreCase) == 0)
+                if (response != null)
                 {
                     lock (_listLocker)
                     {
@@ -61,11 +58,55 @@ namespace IsochronePoc.Application
             });
 
             stopwatch.Stop();
-            Console.WriteLine($"Ran {batches.Count} batches of {batchSize} ({venues.Count()}) in {stopwatch.ElapsedMilliseconds:#,###}ms");
-            Console.WriteLine($"Have {results.Count} results");
+            Console.WriteLine($"Have {results.Count} results from {batches.Count} batches of {batchSize} in {stopwatch.ElapsedMilliseconds:#,###}ms");
+
+            await BuildGoogleResults(results);
         }
 
-        private static Dictionary<int, IList<Venue>> CreateBatches(IList<Venue> venues, int batchSize)
+        private async Task BuildGoogleResults(List<GoogleDistanceMatrixResponse> responses)
+        {
+            foreach (var item in responses)
+            {
+                if (string.Compare(item.Status, "OK", StringComparison.OrdinalIgnoreCase) != 0)
+                {
+                    var message = $"Failure response from google api - {item.Status}";
+                    Console.WriteLine(message);
+                    throw new Exception(message);
+                }
+
+                Console.WriteLine($"Have {item.Rows.Length} rows, {item.DestinationAddresses.Length} destinations, {item.OriginAddresses.Length}");
+
+                Console.WriteLine("OriginAddresses:");
+                foreach (var origin in item.OriginAddresses)
+                {
+                    Console.WriteLine($"  {origin}");
+                }
+
+                Console.WriteLine("DestinationAddresses:");
+                foreach (var destination in item.DestinationAddresses)
+                {
+                    Console.WriteLine($"  {destination}");
+                }
+
+                Console.WriteLine("Rows:");
+                foreach (var row in item.Rows)
+                {
+                    Console.WriteLine($"  Row has {row.Elements.Length} elements");
+                    foreach (var element in row.Elements)
+                    {
+                        Console.WriteLine($"    {element.Status}, {element.Distance}, {element.Duration}");
+                    }
+                }
+
+                foreach (var row in item.Rows)
+                {
+                    
+                }
+                
+            }
+        }
+
+        private Dictionary<int, IList<Venue>> CreateBatches(IList<Venue> venues, int batchSize)
         {
             var batches = new Dictionary<int, IList<Venue>>();
             var items = venues;
