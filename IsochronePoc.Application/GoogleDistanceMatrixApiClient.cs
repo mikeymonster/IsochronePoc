@@ -32,7 +32,7 @@ namespace IsochronePoc.Application
 
         public async Task Search(Venue origin, IList<Venue> venues)
         {
-            const int batchSize = 80;
+            const int batchSize = 100; //Max client-side elements: 100
 
             //var batches = new List<IList<Venue>>();
             var batches = new Dictionary<int, IList<Venue>>();
@@ -44,6 +44,8 @@ namespace IsochronePoc.Application
                 batches.Add(++batchNo, batch.ToList());
                 items = items.Skip(batchSize).ToList();
             }
+
+            var responses = new List<GoogleDistanceMatrixResponse>();
 
             var stopwatch = Stopwatch.StartNew();
 
@@ -59,7 +61,13 @@ namespace IsochronePoc.Application
                     //}
 
                     //TODO: Get a result and add to a thread-safe collection
-                    SearchBatch(origin, batch.Value).GetAwaiter().GetResult();
+                    var response = SearchBatch(origin, batch.Value).GetAwaiter().GetResult();
+                    if(response != null && 
+                       string.Compare(response.Status, "OK", StringComparison.OrdinalIgnoreCase) == 0)
+                    {
+                        //TODO: Use a lock here
+                        responses.Add(response);
+                    }
                 }
             });
 
@@ -67,7 +75,7 @@ namespace IsochronePoc.Application
             Console.WriteLine($"Ran {batches.Count} batches of {batchSize} ({venues.Count()}) in {stopwatch.ElapsedMilliseconds:#,###}ms");
         }
 
-        private async Task SearchBatch(Venue origin, IList<Venue> venues)
+        private async Task<GoogleDistanceMatrixResponse> SearchBatch(Venue origin, IList<Venue> venues)
         {
             //https://developers.google.com/maps/documentation/distance-matrix/intro
 
@@ -82,11 +90,6 @@ namespace IsochronePoc.Application
 
             for (int i = 0; i < venues.Count; i++)
             {
-                if (i > 80)
-                {
-                    break;
-                }
-
                 var venue = venues[i];
 
                 if (i > 0)
@@ -120,7 +123,9 @@ namespace IsochronePoc.Application
             //Console.WriteLine(content);
             //}
 
-            Debug.WriteLine(content);
+            //Debug.WriteLine(content);
+
+            return null;
         }
     }
 }

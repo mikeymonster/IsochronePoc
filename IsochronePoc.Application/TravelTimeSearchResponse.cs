@@ -8,7 +8,7 @@ namespace IsochronePoc.Application
         public Result[] Results { get; set; }
     }
 
-    public partial class Result
+    public class Result
     {
         [JsonProperty("search_id")]
         public string SearchId { get; set; }
@@ -20,11 +20,11 @@ namespace IsochronePoc.Application
         public Properties Properties { get; set; }
     }
 
-    public partial class Properties
+    public class Properties
     {
     }
 
-    public partial class Shape
+    public class Shape
     {
         [JsonProperty("shell")]
         public Shell[] Shell { get; set; }
@@ -33,7 +33,7 @@ namespace IsochronePoc.Application
         public Shell[][] Holes { get; set; }
     }
 
-    public partial class Shell
+    public class Shell
     {
         [JsonProperty("lat")]
         public double Lat { get; set; }

@@ -22,3 +22,5 @@ WITH polygons
  WHERE polygons.id IS NOT NULL;
 
 Convert json to C# class - https://app.quicktype.io/#l=cs&r=json2csharp
+
+Google API documentation: https://developers.google.com/maps/documentation/distance-matrix/start
