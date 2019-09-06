@@ -15,6 +15,7 @@ namespace IsochronePoc.Application
     {
         private readonly HttpClient _httpClient;
         private readonly ApiConfiguration _configuration;
+        private static object _listLocker = new object();
 
         public GoogleDistanceMatrixApiClient(HttpClient httpClient, ApiConfiguration configuration)
         {
@@ -45,7 +46,7 @@ namespace IsochronePoc.Application
                 items = items.Skip(batchSize).ToList();
             }
 
-            var responses = new List<GoogleDistanceMatrixResponse>();
+            var results = new List<GoogleDistanceMatrixResponse>();
 
             var stopwatch = Stopwatch.StartNew();
 
@@ -65,14 +66,17 @@ namespace IsochronePoc.Application
                     if(response != null && 
                        string.Compare(response.Status, "OK", StringComparison.OrdinalIgnoreCase) == 0)
                     {
-                        //TODO: Use a lock here
-                        responses.Add(response);
+                        lock (_listLocker)
+                        {
+                            results.Add(response);
+                        }
                     }
                 }
             });
 
             stopwatch.Stop();
             Console.WriteLine($"Ran {batches.Count} batches of {batchSize} ({venues.Count()}) in {stopwatch.ElapsedMilliseconds:#,###}ms");
+            Console.WriteLine($"Have {results.Count} results");
         }
 
         private async Task<GoogleDistanceMatrixResponse> SearchBatch(Venue origin, IList<Venue> venues)
