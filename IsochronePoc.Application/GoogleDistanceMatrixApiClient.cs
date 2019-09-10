@@ -17,7 +17,7 @@ namespace IsochronePoc.Application
     {
         private readonly HttpClient _httpClient;
         private readonly ApiConfiguration _configuration;
-        private static readonly object _listLocker = new object();
+        private static readonly object ListLocker = new object();
 
         public GoogleDistanceMatrixApiClient(HttpClient httpClient, ApiConfiguration configuration)
         {
@@ -27,9 +27,6 @@ namespace IsochronePoc.Application
             _httpClient.BaseAddress = new Uri(_configuration.GoogleMapsApiBaseUrl);
 
             _httpClient.DefaultRequestHeaders.Accept.Clear();
-            //_httpClient.DefaultRequestHeaders.Add("X-Application-Id", _configuration.ApplicationId);
-            //_httpClient.DefaultRequestHeaders.Add("X-Api-Key", _configuration.ApiKey);
-
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
@@ -51,7 +48,7 @@ namespace IsochronePoc.Application
                 var response = SearchBatch(origin, value).GetAwaiter().GetResult();
                 if (response != null)
                 {
-                    lock (_listLocker)
+                    lock (ListLocker)
                     {
                         results.Add(response);
                     }
@@ -170,7 +167,7 @@ namespace IsochronePoc.Application
             return batches;
         }
 
-        private async Task<GoogleDistanceMatrixResponse> SearchBatch(Venue origin, IList<Venue> venues)
+        private async Task<GoogleDistanceMatrixResponse> SearchBatch(Venue origin, IList<Venue> venues, string travelMode = "driving")
         {
             try
             {
@@ -183,6 +180,7 @@ namespace IsochronePoc.Application
                 var uriBuilder = new StringBuilder($@"{_configuration.GoogleMapsApiBaseUrl}distancematrix/json?");
 
                 uriBuilder.Append($"origins={origin.Latitude}%2C{origin.Longitude}");
+                uriBuilder.Append($"&mode={travelMode}");
                 uriBuilder.Append("&destinations=");
 
                 for (int i = 0; i < venues.Count; i++)

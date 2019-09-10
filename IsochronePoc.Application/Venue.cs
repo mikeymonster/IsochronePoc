@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-
+﻿
 namespace IsochronePoc.Application
 {
     public class Venue
