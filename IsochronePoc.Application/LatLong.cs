@@ -2,7 +2,7 @@
 
 namespace IsochronePoc.Application
 {
-    public class Location
+    public class LatLong
     {
         [JsonProperty("lat")]
         public decimal Latitude { get; set; }

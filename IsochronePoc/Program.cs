@@ -7,6 +7,9 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using IsochronePoc.Application;
+using IsochronePoc.Application.GoogleDistanceMatrixApi;
+using IsochronePoc.Application.TravelTimeFilterApi;
+using IsochronePoc.Application.TravelTimeIsochroneApi;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -23,49 +26,63 @@ namespace IsochronePoc
             {
                 Configure();
 
-                Console.WriteLine($"TravelTime Api uri - {Configuration.IsochroneQueryUri}");
+                Console.WriteLine($"TravelTime Api nIsochrone uri - {Configuration.IsochroneQueryUri}");
+                Console.WriteLine($"TravelTime Api travel time uri - {Configuration.TravelTimeQueryUri}");
                 Console.WriteLine($"TravelTime Api keys - {Configuration.ApplicationId} - {Configuration.ApiKey}");
                 Console.WriteLine($"Google Api uri - {Configuration.GoogleMapsApiBaseUrl}");
                 Console.WriteLine($"Google Api key - {Configuration.GoogleMapsApiKey}");
-
-                await GetGoogleResult(@".\Data\LiveProviderVenues.csv");
-
-                //Console.WriteLine("Press Enter to continue, or any other key to exit");
-                //var key = Console.ReadKey().Key;
-                //if (key != ConsoleKey.Enter)
-                //{
-                return;
-                //}
-
-
-                /******************************************/
-                
-                //var dataPath = @".\Data\sample_isochrone.json";
-                //var data = await LoadJson(dataPath);
-                //var data = await GetIsochrone("OX2 9GX", 51.742141M, -1.295653M);
-                //var data2 = await GetIsochrone("CV1 2WT", 52.400997M, -1.508122M);
-                //var data3 = await GetIsochrone("NE2 4RL", 54.98543M, -1.606414M);
-                //
-                //foreach (var location in data)
-                //{
-                //    Console.WriteLine($"{location.Latitude}, {location.Longitude}");
-                //}
-
-                Console.WriteLine();
-                Console.WriteLine("Locations string for SQL Query for sample data:");
-                var testData = await LoadJson(@".\Data\simple_CV1_2WT.json");
-                await WriteToSqlFile(CreateSqlQuery(testData), @".\Data\Spatial Query.sql");
-
-                //Console.WriteLine("");
-                //Console.WriteLine($"{sqlString}");
-                //Console.WriteLine("");
-
-                await WriteToCsv(testData, @".\Data\simple_CV1_2WT.csv");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.Message}");
+                Console.WriteLine("Configuration failed.");
+                Console.WriteLine(ex.Message);
+                return;
             }
+
+
+            do
+            {
+                Console.WriteLine("Select an option using the number (or Enter for the default)");
+                Console.WriteLine("  1 = Run google search");
+                Console.WriteLine("  2 = Run TravelTime travel time search (default)");
+                Console.WriteLine("  3 = Run TravelTime Isochrone search");
+                Console.WriteLine("Press any other key to exit");
+                Console.WriteLine("");
+
+                try
+                {
+                    var key = Console.ReadKey().Key;
+                    switch (key)
+                    {
+                        case ConsoleKey.D1:
+                        case ConsoleKey.NumPad1:
+                            await GetGoogleResult(@".\Data\LiveProviderVenues.csv");
+                            break;
+                        case ConsoleKey.D2:
+                        case ConsoleKey.NumPad2:
+                        case ConsoleKey.Enter:
+                            var venues = await GetVenuesFromCsv(@".\Data\LiveProviderVenues.csv");
+                            await GetTravelTimeFilterResult("CV1 2WT",
+                                52.400997M, -1.508122M,
+                                venues);
+                            break;
+                        case ConsoleKey.D3:
+                        case ConsoleKey.NumPad3:
+                            await GetTravelTimeIsochroneResult();
+                            break;
+                        case ConsoleKey.D4:
+                        case ConsoleKey.NumPad4:
+                            await CreateSqlQueryFromJsonFile(@".\Data\simple_CV1_2WT.json");
+                            break;
+                        default:
+                            return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"{ex.Message}");
+                }
+            } while (true);
         }
 
         private static void Configure()
@@ -88,6 +105,7 @@ namespace IsochronePoc
                 ApplicationId = travelTimeApiSection["ApplicationId"],
                 ApiKey = travelTimeApiSection["ApiKey"],
                 IsochroneQueryUri = travelTimeApiSection["IsochroneQueryUri"],
+                TravelTimeQueryUri = travelTimeApiSection["TravelTimeQueryUri"],
                 GoogleMapsApiBaseUrl = googleApiSection["GoogleMapsApiBaseUrl"],
                 GoogleMapsApiKey = googleApiSection["GoogleMapsApiKey"]
             };
@@ -137,6 +155,103 @@ namespace IsochronePoc
                 Console.WriteLine($"{searchResult.Address} at {distanceInMiles:#.0}mi ({distanceInKm:#.0}km), travel time {searchResult.TravelTimeString}");
             }
         }
+        public static async Task GetTravelTimeFilterResult(string postcode, decimal latitude, decimal longitude, IList<Venue> venues)
+        {
+            Console.WriteLine($"Have {venues.Count} venues");
+
+            var client = new TravelTimeFilterApiClient(new HttpClient(), Configuration);
+
+            var outputPath = $@".\Data\sample_{postcode.Replace(" ", "_")}.json";
+
+            var result = await client.Search(postcode, latitude, longitude, venues);
+            //var path = @".\Data\sample_isochrone.json";
+
+            using (var writer = File.CreateText(outputPath))
+            using (var jsonWriter = new JsonTextWriter(writer))
+            {
+                jsonWriter.WriteRaw(result);
+            }
+
+            var stopwatch = Stopwatch.StartNew();
+
+            stopwatch.Stop();
+            //Console.WriteLine($"Retrieved {searchResults.Count} search results in  in {stopwatch.ElapsedMilliseconds:#,###}ms");
+        }
+        
+        public static async Task GetTravelTimeIsochroneResult()
+        {
+            //var data = await LoadJson(path);
+            //var data = await GetIsochrone("OX2 9GX", 51.742141M, -1.295653M);
+            var data = await GetIsochrone("CV1 2WT", 52.400997M, -1.508122M);
+            //var data = await GetIsochrone("NE2 4RL", 54.98543M, -1.606414M);
+
+            foreach (var location in data)
+            {
+                Console.WriteLine($"{location.Latitude}, {location.Longitude}");
+            }
+        }
+
+        public static async Task<IList<LatLong>> GetIsochrone(string postcode, decimal latitude, decimal longitude)
+        {
+            var client = new TravelTimeApiIsochroneClient(new HttpClient(), Configuration);
+
+            var outputPath = $@".\Data\isochrones_{postcode.Replace(" ", "_")}.json";
+
+            var result = await client.Search(postcode, latitude, longitude);
+            //var path = @".\Data\sample_isochrone.json";
+
+            using (var writer = File.CreateText(outputPath))
+            using (var jsonWriter = new JsonTextWriter(writer))
+            {
+                jsonWriter.WriteRaw(result);
+            }
+
+            return await LoadJson(outputPath);
+        }
+
+        public static async Task<IList<LatLong>> LoadJson(string path)
+        {
+            try
+            {
+                using (var reader = File.OpenText(path))
+                using (var jsonReader = new JsonTextReader(reader))
+                {
+                    var json = await JObject.LoadAsync(jsonReader);
+
+                    //var results = json
+                    //    .SelectTokens(
+                    //        "$.results");
+
+                    var shapes = json
+                        .SelectTokens(
+                            "$.results[0].shapes[0].shell");
+
+                    var serializer = new JsonSerializer();
+
+                    //var newShapes = serializer.Deserialize<List<Shape>>(shapes.);
+                    //JsonConvert.DeserializeObject<List<Shape>>();
+
+                    //foreach (var shape in shapes.Children())
+                    //{
+                    //    var r = shape.ToObject<LatLong>(serializer);
+                    //}
+
+                    var shapeResults = shapes.Children()
+                        .Select(x => x.ToObject<LatLong>(serializer))
+                        .ToList();
+                    //var serializer = new JsonSerializer();
+                    //var result = (List<LatLong>)serializer.Deserialize(file, typeof(List<LatLong>));
+
+                    //return shapeResults.First().Shell;
+                    return shapeResults;
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+        }
 
         public static async Task<IList<Venue>> GetVenuesFromCsv(string path)
         {
@@ -155,9 +270,10 @@ namespace IsochronePoc
                         var split = line.Split(',');
                         venues.Add(new Venue
                         {
-                            Postcode = split[0],
-                            Longitude = decimal.Parse(split[1]),
-                            Latitude = decimal.Parse(split[2])
+                            Id = int.Parse(split[0]),
+                            Postcode = split[1],
+                            Longitude = decimal.Parse(split[2]),
+                            Latitude = decimal.Parse(split[3])
                         });
                     }
                     catch (Exception e)
@@ -171,69 +287,20 @@ namespace IsochronePoc
             return venues;
         }
 
-        public static async Task<IList<Location>> GetIsochrone(string postCode, decimal latitude, decimal longitude)
+        public static async Task CreateSqlQueryFromJsonFile(string path)
         {
-            var client = new TravelTimeApiClient(new HttpClient(), Configuration);
+            var testData = await LoadJson(path);
+            await WriteToSqlFile(CreateSqlQuery(testData), @".\Data\Spatial Query.sql");
 
-            var outputPath = $@".\Data\sample_{postCode.Replace(" ", "_")}.json";
+            //Console.WriteLine("");
+            Console.WriteLine("LatLongs string for SQL Query for sample data:");
+            //Console.WriteLine($"{sqlString}");
+            //Console.WriteLine("");
 
-            var result = await client.Search(postCode, latitude, longitude);
-            //var path = @".\Data\sample_isochrone.json";
-
-            using (var writer = File.CreateText(outputPath))
-            using (var jsonWriter = new JsonTextWriter(writer))
-            {
-                jsonWriter.WriteRaw(result);
-            }
-
-            return await LoadJson(outputPath);
+            await WriteToCsv(testData, @".\Data\simple_CV1_2WT.csv");
         }
 
-        public static async Task<IList<Location>> LoadJson(string path)
-        {
-            try
-            {
-                using (var reader = File.OpenText(path))
-                using (var jsonReader = new JsonTextReader(reader))
-                {
-                    var json = await JObject.LoadAsync(jsonReader);
-
-                    var results = json
-                        .SelectTokens(
-                            "$.results");
-
-                    var shapes = json
-                        .SelectTokens(
-                            "$.results[0].shapes[0].shell");
-
-                    var serializer = new JsonSerializer();
-
-                    //var newShapes = serializer.Deserialize<List<Shape>>(shapes.);
-                    //JsonConvert.DeserializeObject<List<Shape>>();
-
-                    //foreach (var shape in shapes.Children())
-                    //{
-                    //    var r = shape.ToObject<Location>(serializer);
-                    //}
-
-                    var shapeResults = shapes.Children()
-                        .Select(x => x.ToObject<Location>(serializer))
-                        .ToList();
-                    //var serializer = new JsonSerializer();
-                    //var result = (List<Location>)serializer.Deserialize(file, typeof(List<Location>));
-
-                    //return shapeResults.First().Shell;
-                    return shapeResults;
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                throw;
-            }
-        }
-
-        private static string CreateSqlQuery(IList<Location> data)
+        private static string CreateSqlQuery(IList<LatLong> data)
         {
             var sb = new StringBuilder();
 
@@ -290,7 +357,7 @@ namespace IsochronePoc
             }
         }
 
-        private static async Task WriteToCsv(IList<Location> data, string path)
+        private static async Task WriteToCsv(IList<LatLong> data, string path)
         {
             using (var writer = File.CreateText(path))
             {

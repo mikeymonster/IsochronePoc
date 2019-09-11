@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace IsochronePoc.Application
+namespace IsochronePoc.Application.GoogleDistanceMatrixApi
 {
     public class GoogleDistanceMatrixApiClient : IGoogleDistanceMatrixApiClient
     {
@@ -235,7 +235,6 @@ namespace IsochronePoc.Application
 
                     return result;
                 }
-
             }
             catch (Exception ex)
             {

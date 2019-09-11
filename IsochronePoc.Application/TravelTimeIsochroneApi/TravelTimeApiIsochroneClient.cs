@@ -1,19 +1,21 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using IsochronePoc.Application.TravelTimeFilterApi;
 using Newtonsoft.Json;
 
-namespace IsochronePoc.Application
+namespace IsochronePoc.Application.TravelTimeIsochroneApi
 {
-    public class TravelTimeApiClient : ITravelTimeApiClient
+    public class TravelTimeApiIsochroneClient : ITravelTimeFilterApiClient
     {
         private readonly HttpClient _httpClient;
         private readonly ApiConfiguration _configuration;
 
-        public TravelTimeApiClient(HttpClient httpClient, ApiConfiguration configuration)
+        public TravelTimeApiIsochroneClient(HttpClient httpClient, ApiConfiguration configuration)
         {
             _httpClient = httpClient;
             _configuration = configuration;
@@ -27,7 +29,8 @@ namespace IsochronePoc.Application
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
-        public async Task<string> Search(string postCode, decimal latitude, decimal longitude)
+        //locations not used in this search
+        public async Task<string> Search(string postcode, decimal latitude, decimal longitude, IList<Venue> locations = null)
         {
             /*
             var request = {
@@ -57,7 +60,7 @@ namespace IsochronePoc.Application
             // Travel time in seconds. We want 1 hour travel time so it is 60 minutes x 60 seconds.
             var travelTime = 60 * 60;
 
-            var search = new TravelTimeSearchRequest
+            var search = new TravelTimeIsochroneSearchRequest
             {
                 DepartureSearches = new[]
                 {
@@ -85,9 +88,8 @@ namespace IsochronePoc.Application
             //Console.WriteLine("Json request:");
             //Console.WriteLine(jsonRequest);
             Console.WriteLine();
-            Console.WriteLine($"Searching for {postCode} at lat/long {latitude}, {longitude}");
-
-
+            Console.WriteLine($"Searching for {postcode} at lat/long {latitude}, {longitude}");
+            
             var stopwatch = Stopwatch.StartNew();
             var response = await _httpClient
                 .PostAsync(_configuration.IsochroneQueryUri,
@@ -98,8 +100,8 @@ namespace IsochronePoc.Application
 
             response.EnsureSuccessStatusCode();
 
-            //var response = await responseMessage.Content.ReadAsAsync<PostCodeLookupResponse>();
-            //var content = await response.Content.ReadAsAsync<PostCodeLookupResponse>();
+            //var response = await responseMessage.Content.ReadAsAsync<PostcodeLookupResponse>();
+            //var content = await response.Content.ReadAsAsync<PostcodeLookupResponse>();
             var content = await response.Content.ReadAsStringAsync();
 
             return content;

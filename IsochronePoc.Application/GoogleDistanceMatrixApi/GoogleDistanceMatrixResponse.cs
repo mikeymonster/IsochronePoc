@@ -1,8 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using Newtonsoft.Json;
 
-using Newtonsoft.Json;
-
-namespace IsochronePoc.Application
+namespace IsochronePoc.Application.GoogleDistanceMatrixApi
 {
     public class GoogleDistanceMatrixResponse
     {

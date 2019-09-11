@@ -1,8 +1,9 @@
 ﻿using Newtonsoft.Json;
 
-namespace IsochronePoc.Application
+namespace IsochronePoc.Application.TravelTimeIsochroneApi
+
 {
-    public partial class TravelTimeSearchRequest
+    public class TravelTimeIsochroneSearchRequest
     {
         [JsonProperty("departure_searches")]
         public DepartureSearch[] DepartureSearches { get; set; }
@@ -11,12 +12,12 @@ namespace IsochronePoc.Application
         public ArrivalSearch[] ArrivalSearches { get; set; }
     }
 
-    public partial class ArrivalSearch
+    public class ArrivalSearch
     {
         //Not filled in as we won't be using it
     }
 
-    public partial class DepartureSearch
+    public class DepartureSearch
     {
         [JsonProperty("id")]
         public string Id { get; set; }
@@ -34,7 +35,7 @@ namespace IsochronePoc.Application
         public long TravelTime { get; set; }
     }
 
-    public partial class Coords
+    public class Coords
     {
         [JsonProperty("lat")]
         public double Lat { get; set; }
@@ -43,13 +44,13 @@ namespace IsochronePoc.Application
         public double Lng { get; set; }
     }
 
-    public partial class Transportation
+    public class Transportation
     {
         [JsonProperty("type")]
         public string Type { get; set; }
     }
 
-    //public partial class TravelTimeSearch
+    //public class TravelTimeSearch
     //{
     //    public static TravelTimeSearch FromJson(string json) => 
     //        JsonConvert.DeserializeObject<TravelTimeSearch>(json, Converter.Settings);

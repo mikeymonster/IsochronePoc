@@ -1,8 +1,8 @@
 ﻿using Newtonsoft.Json;
 
-namespace IsochronePoc.Application
+namespace IsochronePoc.Application.TravelTimeIsochroneApi
 {
-    public class TravelTimeSearchResponse
+    public class TravelTimeIsochroneSearchResponse
     {
         [JsonProperty("results")]
         public Result[] Results { get; set; }

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace IsochronePoc.Application
+namespace IsochronePoc.Application.GoogleDistanceMatrixApi
 {
     public interface IGoogleDistanceMatrixApiClient
     {

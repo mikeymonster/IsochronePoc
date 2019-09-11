@@ -8,6 +8,9 @@ Login https://igeolise.3scale.net/admin
 Sample search:
  https://app.traveltimeplatform.com/search/0_lng=-1.50812&0_tt=60&0_mode=driving&0_title=CV1%202WT%2C%20Coventry%2C%20England%2C%20United%20Kingdom&0_lat=52.40100&poi=Cinema
 
+Travel time time filter:
+  https://docs.traveltimeplatform.com/reference/time-filter
+
 WITH polygons
  AS (SELECT 'p1' id, 
             geography::STGeomFromText('polygon ((-113.754429 52.471834 , 1 5, 5 5, -113.754429 52.471834))', 4326) poly
