@@ -20,7 +20,7 @@ namespace IsochronePoc
     {
         internal static ApiConfiguration Configuration { get; set; }
 
-        static async Task Main()
+        public static async Task Main()
         {
             try
             {
@@ -39,19 +39,21 @@ namespace IsochronePoc
                 return;
             }
 
-
             do
             {
                 Console.WriteLine("Select an option using the number (or Enter for the default)");
                 Console.WriteLine("  1 = Run google search");
                 Console.WriteLine("  2 = Run TravelTime travel time search (default)");
                 Console.WriteLine("  3 = Run TravelTime Isochrone search");
+                Console.WriteLine("  4 = Create sample SQL query from isochrone Run json");
                 Console.WriteLine("Press any other key to exit");
                 Console.WriteLine("");
 
                 try
                 {
                     var key = Console.ReadKey().Key;
+                    Console.WriteLine("");
+
                     switch (key)
                     {
                         case ConsoleKey.D1:
@@ -272,8 +274,8 @@ namespace IsochronePoc
                         {
                             Id = int.Parse(split[0]),
                             Postcode = split[1],
-                            Longitude = decimal.Parse(split[2]),
-                            Latitude = decimal.Parse(split[3])
+                            Latitude = decimal.Parse(split[2]),
+                            Longitude = decimal.Parse(split[3])
                         });
                     }
                     catch (Exception e)
@@ -361,11 +363,11 @@ namespace IsochronePoc
         {
             using (var writer = File.CreateText(path))
             {
-                writer.WriteLine("Longitude, Latitude");
+                await writer.WriteLineAsync("Longitude, Latitude");
 
                 foreach (var location in data)
                 {
-                    writer.WriteLine($"{location.Longitude}, {location.Latitude}");
+                    await writer.WriteLineAsync($"{location.Longitude}, {location.Latitude}");
                 }
             }
         }

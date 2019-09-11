@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -117,12 +118,11 @@ namespace IsochronePoc.Application.TravelTimeFilterApi
             // The departure time in an ISO format.
             // var departureTime = "2018-07-04T09:00:00-0500";
             //var departureTime = DateTime.Now.ToString("o");
-            var departureTime = new DateTimeOffset(DateTime.UtcNow);
+            //var departureTime = new DateTimeOffset(DateTime.UtcNow);
+            var departureTime = new DateTimeOffset(DateTime.UtcNow.AddDays(1));
 
             // Travel time in seconds. We want 1 hour travel time so it is 60 minutes x 60 seconds.
             var travelTime = 60 * 60;
-
-
 
             //var locationsForSearch = new Location[locations.Count];
             //for (var i = 0; i < locations.Count; i++)
@@ -146,9 +146,13 @@ namespace IsochronePoc.Application.TravelTimeFilterApi
             //    {
             //        Lat = Convert.ToDouble(l.Latitude),
             //        Lng = Convert.ToDouble(l.Longitude)
-
             //    }
             //}).ToArray();
+
+            //if(locs.Any(l => string.IsNullOrWhiteSpace(l.Id)))
+            //{
+
+            //}
 
             //The start location needs to be included in the request "locations"
             locations.Insert(0, new Venue
@@ -159,9 +163,22 @@ namespace IsochronePoc.Application.TravelTimeFilterApi
                 Longitude = longitude
             });
 
-            var travelType = "public_transport";
+            var travelType = "driving";
+            //Possible values:
+            //cycling
+            //driving
+            //driving+train
+            //cycling+public_transport
+            //public_transport
+            //walking
+            //coach
+            //bus
+            //train
+            //ferry
+            //cycling+ferry
+            //driving+ferry
 
-            var search = new TravelTimeFilterSearchRequest
+            var searchRequest = new TravelTimeFilterSearchRequest
             {
                 Locations = locations
                     .Select(l => new Location
@@ -171,31 +188,37 @@ namespace IsochronePoc.Application.TravelTimeFilterApi
                         {
                             Lat = Convert.ToDouble(l.Latitude),
                             Lng = Convert.ToDouble(l.Longitude)
-
                         }
                     }).ToArray(),
                 DepartureSearches = new[]
                 {
                     new DepartureSearch
                     {
-                        Id = "0",
+                        Id = "search_from_origin",
+                        DepartureLocationId = "0", //The first location is the origin
                         Transportation = new Transportation
                         {
                             Type = travelType
                         },
                         DepartureTime = departureTime,
                         TravelTime = travelTime,
-                        ArrivalLocationIds = new string[0],
-                        //ArrivalLocationIds = locations
-                        //    .Where(l => l.Id != 0)
-                        //    .Select(l => l.Id.ToString()).ToArray(),
+                        //ArrivalLocationIds = new string[0],
+                        ArrivalLocationIds = locations
+                            .Where(l => l.Id != 0)
+                            .Select(l => l.Id.ToString()).ToArray(),
                         Properties = new []
                         {
                             "travel_time",
-                            //"distance",
+                            "distance",
                             //"distance_breakdown",
                             //"fares",
                             //"route"
+                        },
+                        Range = new Range
+                        {
+                            Enabled = true,
+                            MaxResults = 5,
+                            Width = 600
                         }
                     }
                 },
@@ -212,12 +235,13 @@ namespace IsochronePoc.Application.TravelTimeFilterApi
                 },
             };
 
-            var jsonRequest = JsonConvert.SerializeObject(search, serializerSettings);
+            var jsonRequest = JsonConvert.SerializeObject(searchRequest, serializerSettings);
 
             Console.WriteLine();
             Console.WriteLine($"Searching for locations near {postcode} at lat/long {latitude}, {longitude}");
             Console.WriteLine();
-            Console.WriteLine("Json request:\r\n{jsonRequest}");
+            Console.WriteLine($"Json request:\r\n{jsonRequest}");
+            Console.WriteLine();
 
             var stopwatch = Stopwatch.StartNew();
 
@@ -230,20 +254,29 @@ namespace IsochronePoc.Application.TravelTimeFilterApi
 
             Console.WriteLine($"Received {response.StatusCode} in {stopwatch.ElapsedMilliseconds:#,###}ms");
 
+            var jsonResponse = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("Unsuccessful call to API");
+                Console.WriteLine($"Status code {response.StatusCode}, reason {response.ReasonPhrase}");
+            }
+
+            Console.WriteLine($"json: {jsonResponse}");
+            Console.WriteLine();
+
             response.EnsureSuccessStatusCode();
 
             //var response = await responseMessage.Content.ReadAsAsync<PostcodeLookupResponse>();
             //var content = await response.Content.ReadAsAsync<PostcodeLookupResponse>();
-            var json = await response.Content.ReadAsStringAsync();
 
             var outputPath = $@".\Data\travel_time_filter_{postcode.Replace(" ", "_")}.json";
             using (var writer = File.CreateText(outputPath))
             using (var jsonWriter = new JsonTextWriter(writer))
             {
-                jsonWriter.WriteRaw(json);
+                jsonWriter.WriteRaw(jsonResponse);
             }
 
-            var obj = JsonConvert.DeserializeObject<TravelTimeFilterSearchResponse>(json, serializerSettings);
+            var obj = JsonConvert.DeserializeObject<TravelTimeFilterSearchResponse>(jsonResponse, serializerSettings);
 
             using (var stream = await response.Content.ReadAsStreamAsync())
             using (var reader = new StreamReader(stream))
@@ -253,11 +286,10 @@ namespace IsochronePoc.Application.TravelTimeFilterApi
                 var result = (TravelTimeFilterSearchResponse)serializer.Deserialize(jsonReader,
                     typeof(TravelTimeFilterSearchResponse));
 
-
                 //return result;
             }
 
-            return json;
+            return jsonResponse;
         }
     }
 }
