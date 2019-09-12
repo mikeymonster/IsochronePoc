@@ -1,6 +1,4 @@
-﻿using System.Globalization;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
+﻿using Newtonsoft.Json;
 
 namespace IsochronePoc.Application.TravelTimeFilterApi
 {
@@ -16,7 +14,7 @@ namespace IsochronePoc.Application.TravelTimeFilterApi
         public string SearchId { get; set; }
 
         [JsonProperty("locations")]
-        public Location[] ResponseLocations { get; set; }
+        public ResponseLocation[] ResponseLocations { get; set; }
 
         [JsonProperty("unreachable")]
         public string[] Unreachable { get; set; }

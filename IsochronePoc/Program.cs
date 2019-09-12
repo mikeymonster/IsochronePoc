@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using IsochronePoc.Application;
 using IsochronePoc.Application.GoogleDistanceMatrixApi;
 using IsochronePoc.Application.TravelTimeFilterApi;
+using IsochronePoc.Application.TravelTimeFilterFastApi;
 using IsochronePoc.Application.TravelTimeIsochroneApi;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
@@ -44,8 +45,9 @@ namespace IsochronePoc
                 Console.WriteLine("Select an option using the number (or Enter for the default)");
                 Console.WriteLine("  1 = Run google search");
                 Console.WriteLine("  2 = Run TravelTime travel time search (default)");
-                Console.WriteLine("  3 = Run TravelTime Isochrone search");
-                Console.WriteLine("  4 = Create sample SQL query from isochrone Run json");
+                Console.WriteLine("  3 = Run TravelTime travel time search (fast) (default)");
+                Console.WriteLine("  4 = Run TravelTime Isochrone search");
+                Console.WriteLine("  5 = Create sample SQL query from isochrone Run json");
                 Console.WriteLine("Press any other key to exit");
                 Console.WriteLine("");
 
@@ -62,7 +64,6 @@ namespace IsochronePoc
                             break;
                         case ConsoleKey.D2:
                         case ConsoleKey.NumPad2:
-                        case ConsoleKey.Enter:
                             var venues = await GetVenuesFromCsv(@".\Data\LiveProviderVenues.csv");
                             await GetTravelTimeFilterResult("CV1 2WT",
                                 52.400997M, -1.508122M,
@@ -70,10 +71,18 @@ namespace IsochronePoc
                             break;
                         case ConsoleKey.D3:
                         case ConsoleKey.NumPad3:
-                            await GetTravelTimeIsochroneResult();
+                        case ConsoleKey.Enter:
+                            //var venues = await GetVenuesFromCsv(@".\Data\LiveProviderVenues.csv");
+                            await GetTravelTimeFilterFastResult("CV1 2WT",
+                                52.400997M, -1.508122M,
+                                GetVenuesFromCsv(@".\Data\LiveProviderVenues.csv").GetAwaiter().GetResult());
                             break;
                         case ConsoleKey.D4:
                         case ConsoleKey.NumPad4:
+                            await GetTravelTimeIsochroneResult();
+                            break;
+                        case ConsoleKey.D5:
+                        case ConsoleKey.NumPad5:
                             await CreateSqlQueryFromJsonFile(@".\Data\simple_CV1_2WT.json");
                             break;
                         default:
@@ -179,7 +188,30 @@ namespace IsochronePoc
             stopwatch.Stop();
             //Console.WriteLine($"Retrieved {searchResults.Count} search results in  in {stopwatch.ElapsedMilliseconds:#,###}ms");
         }
-        
+
+        public static async Task GetTravelTimeFilterFastResult(string postcode, decimal latitude, decimal longitude, IList<Venue> venues)
+        {
+            Console.WriteLine($"Have {venues.Count} venues");
+
+            var client = new TravelTimeFilterFastApiClient(new HttpClient(), Configuration);
+
+            var outputPath = $@".\Data\sample_{postcode.Replace(" ", "_")}.json";
+
+            var result = await client.Search(postcode, latitude, longitude, venues);
+            //var path = @".\Data\sample_isochrone.json";
+
+            using (var writer = File.CreateText(outputPath))
+            using (var jsonWriter = new JsonTextWriter(writer))
+            {
+                jsonWriter.WriteRaw(result);
+            }
+
+            var stopwatch = Stopwatch.StartNew();
+
+            stopwatch.Stop();
+            //Console.WriteLine($"Retrieved {searchResults.Count} search results in  in {stopwatch.ElapsedMilliseconds:#,###}ms");
+        }
+
         public static async Task GetTravelTimeIsochroneResult()
         {
             //var data = await LoadJson(path);

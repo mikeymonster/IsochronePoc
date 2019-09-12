@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -12,19 +11,19 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace IsochronePoc.Application.TravelTimeFilterApi
+namespace IsochronePoc.Application.TravelTimeFilterFastApi
 {
-    public class TravelTimeFilterApiClient : ITravelTimeFilterApiClient
+    public class TravelTimeFilterFastApiClient : ITravelTimeFilterFastApiClient
     {
         private readonly HttpClient _httpClient;
         private readonly ApiConfiguration _configuration;
 
-        public TravelTimeFilterApiClient(HttpClient httpClient, ApiConfiguration configuration)
+        public TravelTimeFilterFastApiClient(HttpClient httpClient, ApiConfiguration configuration)
         {
             _httpClient = httpClient;
             _configuration = configuration;
 
-            _httpClient.BaseAddress = new Uri(_configuration.TravelTimeQueryUri);
+            _httpClient.BaseAddress = new Uri(_configuration.TravelTimeQueryUri + "/fast");
 
             _httpClient.DefaultRequestHeaders.Accept.Clear();
             _httpClient.DefaultRequestHeaders.Add("X-Application-Id", _configuration.ApplicationId);
@@ -34,8 +33,7 @@ namespace IsochronePoc.Application.TravelTimeFilterApi
         }
 
         public async Task<string> Search(string postcode, decimal latitude, decimal longitude, IList<Venue> locations)
-        {
-            //https://docs.traveltimeplatform.com/reference/time-filter
+        {            //https://docs.traveltimeplatform.com/reference/time-filter
 
             // The departure time in an ISO format.
             // var departureTime = "2018-07-04T09:00:00-0500";
@@ -44,7 +42,9 @@ namespace IsochronePoc.Application.TravelTimeFilterApi
 
             // Travel time in seconds. We want 1 hour travel time so it is 60 minutes x 60 seconds.
             var travelTime = 60 * 60;
-            
+
+            var arrivalTime = new DateTimeOffset(DateTime.UtcNow.AddSeconds(travelTime));
+
             //The start location needs to be included in the request "locations"
             locations.Insert(0, new Venue
             {
@@ -54,22 +54,10 @@ namespace IsochronePoc.Application.TravelTimeFilterApi
                 Longitude = longitude
             });
 
-            var travelType = "driving";
-            //Possible values:
-            //cycling
-            //driving
-            //driving+train
-            //cycling+public_transport
-            //public_transport
-            //walking
-            //coach
-            //bus
-            //train
-            //ferry
-            //cycling+ferry
-            //driving+ferry
+            var travelType = "driving+public_transport";
+            //public_transport, driving, driving+public_transport
 
-            var searchRequest = new TravelTimeFilterSearchRequest
+            var searchRequest = new TravelTimeFilterFastSearchRequest
             {
                 Locations = locations
                     .Select(l => new Location
@@ -81,39 +69,35 @@ namespace IsochronePoc.Application.TravelTimeFilterApi
                             Lng = Convert.ToDouble(l.Longitude)
                         }
                     }).ToArray(),
-                DepartureSearches = new[]
-                {
-                    new DepartureSearch
+                ArrivalSearches = new ArrivalSearches
                     {
-                        Id = "search_from_origin",
-                        DepartureLocationId = "0", //The first location is the origin
-                        Transportation = new Transportation
+                        ManyToOne = new ManyToOne[0],
+                        OneToMany = new OneToMany[]
                         {
-                            Type = travelType
-                        },
-                        DepartureTime = departureTime,
-                        TravelTime = travelTime,
-                        //ArrivalLocationIds = new string[0],
-                        ArrivalLocationIds = locations
-                            .Where(l => l.Id != 0)
-                            .Select(l => l.Id.ToString()).ToArray(),
-                        Properties = new []
-                        {
-                            "travel_time",
-                            "distance",
-                            //"distance_breakdown",
-                            //"fares",
-                            //"route"
-                        },
-                        Range = new Range
-                        {
-                            Enabled = true,
-                            MaxResults = 5,
-                            Width = 600
+                            new OneToMany
+                            {
+                                Id = "search_from_origin",
+                                DepartureLocationId = "0", //The first location is the origin
+                                ArrivalLocationIds = locations
+                                    .Where(l => l.Id != 0)
+                                    .Select(l => l.Id.ToString()).ToArray(),
+                                Transportation = new Transportation
+                                {
+                                    Type = travelType
+                                },
+                                ArrivalTimePeriod = "weekday_morning",
+                                TravelTime = travelTime,
+                                Properties = new []
+                                {
+                                    "travel_time",
+                                    //"distance",
+                                    //"distance_breakdown",
+                                    "fares",
+                                    //"route"
+                                },
+                            }
                         }
-                    }
-                },
-                ArrivalSearches = new ArrivalSearch[0]
+                }
             };
 
             var serializerSettings = new JsonSerializerSettings
@@ -138,7 +122,7 @@ namespace IsochronePoc.Application.TravelTimeFilterApi
 
             //Note: BaseUri saved above is actually the target Uri
             var response = await _httpClient
-                .PostAsync(_configuration.TravelTimeQueryUri,
+                .PostAsync(_configuration.TravelTimeQueryUri + "/fast",
                     new StringContent(jsonRequest, Encoding.UTF8, "application/json"));
 
             stopwatch.Stop();
@@ -167,15 +151,15 @@ namespace IsochronePoc.Application.TravelTimeFilterApi
                 jsonWriter.WriteRaw(jsonResponse);
             }
 
-            var obj = JsonConvert.DeserializeObject<TravelTimeFilterSearchResponse>(jsonResponse, serializerSettings);
+            var obj = JsonConvert.DeserializeObject<TravelTimeFilterFastSearchResponse>(jsonResponse, serializerSettings);
 
             using (var stream = await response.Content.ReadAsStreamAsync())
             using (var reader = new StreamReader(stream))
             using (var jsonReader = new JsonTextReader(reader))
             {
                 var serializer = new JsonSerializer();
-                var result = (TravelTimeFilterSearchResponse)serializer.Deserialize(jsonReader,
-                    typeof(TravelTimeFilterSearchResponse));
+                var result = (TravelTimeFilterFastSearchResponse)serializer.Deserialize(jsonReader,
+                    typeof(TravelTimeFilterFastSearchResponse));
 
                 //return result;
             }
