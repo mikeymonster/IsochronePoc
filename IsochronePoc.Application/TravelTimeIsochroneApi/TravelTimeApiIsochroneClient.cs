@@ -30,7 +30,7 @@ namespace IsochronePoc.Application.TravelTimeIsochroneApi
         }
 
         //locations not used in this search
-        public async Task<string> Search(string postcode, decimal latitude, decimal longitude, IList<Venue> locations = null)
+        public async Task<string> Search(string postcode, decimal latitude, decimal longitude, IList<Location> locations = null)
         {
             /*
             var request = {

@@ -8,12 +8,16 @@
   <ItemGroup>
     <None Remove="Data\DevVenues.csv" />
     <None Remove="Data\LiveProviderVenues.csv" />
+    <None Remove="Data\postcodes.csv" />
     <None Remove="Data\sample_isochrone.json" />
     <None Remove="Data\simple_CV1_2WT.json" />
     <None Remove="Data\TestVenues.csv" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Data\postcodes.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Data\LiveProviderVenues.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

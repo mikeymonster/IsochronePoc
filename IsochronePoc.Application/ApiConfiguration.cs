@@ -12,5 +12,6 @@ namespace IsochronePoc.Application
         //Google keys
         public string GoogleMapsApiBaseUrl { get; set; }
         public string GoogleMapsApiKey { get; set; }
+        public string PostcodeRetrieverBaseUrl { get; set; }
     }
 }

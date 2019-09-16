@@ -32,10 +32,10 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             _useEncodedPolyline = false;
-            _batchSize = _useEncodedPolyline ? 1000 : 100;
+            _batchSize = _useEncodedPolyline ? 100 : 100;
         }
 
-        public async Task<IList<DistanceSearchResult>> Search(Venue origin, IList<Venue> venues)
+        public async Task<IList<DistanceSearchResult>> Search(Location origin, IList<Location> venues)
         {
             var batches = CreateBatches(venues, _batchSize);
             var results = new List<GoogleDistanceMatrixResponse>();
@@ -155,9 +155,9 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
             return Task.FromResult((IList<DistanceSearchResult>)result);
         }
 
-        private Dictionary<int, IList<Venue>> CreateBatches(IList<Venue> venues, int batchSize)
+        private Dictionary<int, IList<Location>> CreateBatches(IList<Location> venues, int batchSize)
         {
-            var batches = new Dictionary<int, IList<Venue>>();
+            var batches = new Dictionary<int, IList<Location>>();
             var items = venues;
             var batchNo = 0;
             while (items.Any())
@@ -170,7 +170,7 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
             return batches;
         }
 
-        private async Task<GoogleDistanceMatrixResponse> SearchBatch(Venue origin, IList<Venue> venues, string travelMode = "driving")
+        private async Task<GoogleDistanceMatrixResponse> SearchBatch(Location origin, IList<Location> venues, string travelMode = "driving")
         {
             try
             {
@@ -220,7 +220,7 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
             }
         }
 
-        public string BuildUri(Venue origin, IList<Venue> venues, string travelMode, bool useEncodedPolyline)
+        public string BuildUri(Location origin, IList<Location> venues, string travelMode, bool useEncodedPolyline)
         {
             //http://maps.googleapis.com/maps/api/distancematrix/outputFormat?parameters
             //var uri = "distancematrix";
@@ -279,7 +279,7 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
         }
 
         //Implementation from https://gist.github.com/shinyzhu/4617989
-        public string EncodePolyline(IList<Venue> points)
+        public string EncodePolyline(IList<Location> points)
         {
             var sb = new StringBuilder();
 
@@ -322,7 +322,7 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
         }
 
         //Implementation from https://briancaos.wordpress.com/2009/10/16/google-maps-polyline-encoding-in-c/
-        public static string EncodeCoordinates(IList<Venue> coordinates)
+        public static string EncodeCoordinates(IList<Location> coordinates)
         {
             int plat = 0;
             int plng = 0;

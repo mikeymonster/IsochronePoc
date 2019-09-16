@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using IsochronePoc.Application;
+using IsochronePoc.Application.GeoLocations;
 using IsochronePoc.Application.GoogleDistanceMatrixApi;
 using IsochronePoc.Application.TravelTimeFilterApi;
 using IsochronePoc.Application.TravelTimeFilterFastApi;
@@ -14,6 +15,7 @@ using IsochronePoc.Application.TravelTimeIsochroneApi;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Location = IsochronePoc.Application.Location;
 
 namespace IsochronePoc
 {
@@ -32,6 +34,7 @@ namespace IsochronePoc
                 Console.WriteLine($"TravelTime Api keys - {Configuration.ApplicationId} - {Configuration.ApiKey}");
                 Console.WriteLine($"Google Api uri - {Configuration.GoogleMapsApiBaseUrl}");
                 Console.WriteLine($"Google Api key - {Configuration.GoogleMapsApiKey}");
+                Console.WriteLine($"Postcodes uri - {Configuration.PostcodeRetrieverBaseUrl}");
             }
             catch (Exception ex)
             {
@@ -48,6 +51,7 @@ namespace IsochronePoc
                 Console.WriteLine("  3 = Run TravelTime travel time search (fast) (default)");
                 Console.WriteLine("  4 = Run TravelTime Isochrone search");
                 Console.WriteLine("  5 = Create sample SQL query from isochrone Run json");
+                Console.WriteLine("  6 = Lookup postcodes");
                 Console.WriteLine("Press any other key to exit");
                 Console.WriteLine("");
 
@@ -85,6 +89,10 @@ namespace IsochronePoc
                         case ConsoleKey.NumPad5:
                             await CreateSqlQueryFromJsonFile(@".\Data\simple_CV1_2WT.json");
                             break;
+                        case ConsoleKey.D6:
+                        case ConsoleKey.NumPad6:
+                            await LookupPostcodes(@".\Data\postcodes.csv");
+                            break;
                         default:
                             return;
                     }
@@ -118,7 +126,8 @@ namespace IsochronePoc
                 IsochroneQueryUri = travelTimeApiSection["IsochroneQueryUri"],
                 TravelTimeQueryUri = travelTimeApiSection["TravelTimeQueryUri"],
                 GoogleMapsApiBaseUrl = googleApiSection["GoogleMapsApiBaseUrl"],
-                GoogleMapsApiKey = googleApiSection["GoogleMapsApiKey"]
+                GoogleMapsApiKey = googleApiSection["GoogleMapsApiKey"],
+                PostcodeRetrieverBaseUrl = localConfiguration["PostcodeRetrieverBaseUrl"]
             };
         }
 
@@ -133,7 +142,7 @@ namespace IsochronePoc
 
             var client = new GoogleDistanceMatrixApiClient(new HttpClient(), Configuration);
 
-            var startPoint = new Venue
+            var startPoint = new Location
             {
                 Postcode = "CV1 2WT",
                 Latitude = 52.400997M,
@@ -166,7 +175,7 @@ namespace IsochronePoc
                 Console.WriteLine($"{searchResult.Address} at {distanceInMiles:#.0}mi ({distanceInKm:#.0}km), travel time {searchResult.TravelTimeString}");
             }
         }
-        public static async Task GetTravelTimeFilterResult(string postcode, decimal latitude, decimal longitude, IList<Venue> venues)
+        public static async Task GetTravelTimeFilterResult(string postcode, decimal latitude, decimal longitude, IList<Location> venues)
         {
             Console.WriteLine($"Have {venues.Count} venues");
 
@@ -189,7 +198,7 @@ namespace IsochronePoc
             //Console.WriteLine($"Retrieved {searchResults.Count} search results in  in {stopwatch.ElapsedMilliseconds:#,###}ms");
         }
 
-        public static async Task GetTravelTimeFilterFastResult(string postcode, decimal latitude, decimal longitude, IList<Venue> venues)
+        public static async Task GetTravelTimeFilterFastResult(string postcode, decimal latitude, decimal longitude, IList<Location> venues)
         {
             Console.WriteLine($"Have {venues.Count} venues");
 
@@ -240,10 +249,10 @@ namespace IsochronePoc
                 jsonWriter.WriteRaw(result);
             }
 
-            return await LoadJson(outputPath);
+            return await LoadJsonIsochronesFile(outputPath);
         }
 
-        public static async Task<IList<LatLong>> LoadJson(string path)
+        public static async Task<IList<LatLong>> LoadJsonIsochronesFile(string path)
         {
             try
             {
@@ -287,9 +296,50 @@ namespace IsochronePoc
             }
         }
 
-        public static async Task<IList<Venue>> GetVenuesFromCsv(string path)
+        private static async Task LookupPostcodes(string path)
         {
-            var venues = new List<Venue>();
+            var postcodes = await GetPostcodesFromCsv(path);
+            var locations = new List<Location>();
+
+            var locationClient = new LocationApiClient(new HttpClient(), Configuration);
+
+            foreach (var postcode in postcodes)
+            {
+                try
+                {
+                    var location = await locationClient.GetGeoLocationData(postcode);
+                    Console.WriteLine($"{location.Postcode} - {location.Latitude}, {location.Longitude}");
+                    locations.Add(location);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"{postcode} failed - {ex.Message}");
+                }
+            }
+
+            await WriteToCsv(locations, @".\Data\locations_from_postcodes.csv");
+        }
+
+        public static async Task<IList<string>> GetPostcodesFromCsv(string path)
+        {
+            var venues = new List<string>();
+
+            using (var reader = File.OpenText(path))
+            {
+                await reader.ReadLineAsync();
+
+                while (!reader.EndOfStream)
+                {
+                    venues.Add(await reader.ReadLineAsync());
+                }
+            }
+
+            return venues;
+        }
+        
+        public static async Task<IList<Location>> GetVenuesFromCsv(string path)
+        {
+            var venues = new List<Location>();
 
             using (var reader = File.OpenText(path))
             {
@@ -300,9 +350,8 @@ namespace IsochronePoc
                     var line = await reader.ReadLineAsync();
                     try
                     {
-
                         var split = line.Split(',');
-                        venues.Add(new Venue
+                        venues.Add(new Location
                         {
                             Id = int.Parse(split[0]),
                             Postcode = split[1],
@@ -323,7 +372,7 @@ namespace IsochronePoc
 
         public static async Task CreateSqlQueryFromJsonFile(string path)
         {
-            var testData = await LoadJson(path);
+            var testData = await LoadJsonIsochronesFile(path);
             await WriteToSqlFile(CreateSqlQuery(testData), @".\Data\Spatial Query.sql");
 
             //Console.WriteLine("");
@@ -395,11 +444,24 @@ namespace IsochronePoc
         {
             using (var writer = File.CreateText(path))
             {
-                await writer.WriteLineAsync("Longitude, Latitude");
+                await writer.WriteLineAsync("Longitude,Latitude");
 
                 foreach (var location in data)
                 {
-                    await writer.WriteLineAsync($"{location.Longitude}, {location.Latitude}");
+                    await writer.WriteLineAsync($"{location.Longitude},{location.Latitude}");
+                }
+            }
+        }
+
+        private static async Task WriteToCsv(IList<Location> data, string path)
+        {
+            using (var writer = File.CreateText(path))
+            {
+                await writer.WriteLineAsync("Id,Postcode,Longitude,Latitude");
+
+                foreach (var location in data)
+                {
+                    await writer.WriteLineAsync($"{location.Postcode},{location.Longitude},{location.Latitude}");
                 }
             }
         }

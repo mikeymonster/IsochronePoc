@@ -32,7 +32,7 @@ namespace IsochronePoc.Application.TravelTimeFilterFastApi
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
-        public async Task<string> Search(string postcode, decimal latitude, decimal longitude, IList<Venue> locations)
+        public async Task<string> Search(string postcode, decimal latitude, decimal longitude, IList<Application.Location> locations)
         {            //https://docs.traveltimeplatform.com/reference/time-filter
 
             // The departure time in an ISO format.
@@ -46,7 +46,7 @@ namespace IsochronePoc.Application.TravelTimeFilterFastApi
             var arrivalTime = new DateTimeOffset(DateTime.UtcNow.AddSeconds(travelTime));
 
             //The start location needs to be included in the request "locations"
-            locations.Insert(0, new Venue
+            locations.Insert(0, new Application.Location
             {
                 Id = 0,
                 Postcode = postcode,

@@ -5,6 +5,6 @@ namespace IsochronePoc.Application.TravelTimeFilterApi
 {
     public interface ITravelTimeFilterApiClient
     {
-        Task<string> Search(string postcode, decimal latitude, decimal longitude, IList<Venue> locations);
+        Task<string> Search(string postcode, decimal latitude, decimal longitude, IList<Application.Location> locations);
     }
 }

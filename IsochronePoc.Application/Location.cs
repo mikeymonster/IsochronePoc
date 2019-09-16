@@ -1,7 +1,7 @@
 ﻿
 namespace IsochronePoc.Application
 {
-    public class Venue
+    public class Location
     {
         public int Id { get; set; }
         public string Postcode { get; set; }

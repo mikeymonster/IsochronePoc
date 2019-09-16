@@ -12,9 +12,9 @@ namespace IsochronePoc.Application.Tests
         [Fact]
         public void Then_Encoded_Polyline_Is_As_Expected_For_A_Single_Point()
         {
-            var points = new List<Venue>
+            var points = new List<Location>
             {
-                new Venue { Latitude = 52.400997M, Longitude = -1.508122M }
+                new Location { Latitude = 52.400997M, Longitude = -1.508122M }
             };
 
             var apiClient = new GoogleDistanceMatrixApiClient(new HttpClient(),
@@ -31,11 +31,11 @@ namespace IsochronePoc.Application.Tests
         [Fact]
         public void Then_Encoded_Polyline_Is_As_Expected_For_Multiple_Points()
         {
-            var points = new List<Venue>
+            var points = new List<Location>
             {
-                new Venue { Latitude = 38.5M, Longitude = -120.2M },
-                new Venue { Latitude = 40.7M, Longitude = -120.95M },
-                new Venue { Latitude = 43.252M, Longitude = -126.453M }
+                new Location { Latitude = 38.5M, Longitude = -120.2M },
+                new Location { Latitude = 40.7M, Longitude = -120.95M },
+                new Location { Latitude = 43.252M, Longitude = -126.453M }
             };
 
             var apiClient = new GoogleDistanceMatrixApiClient(new HttpClient(),
@@ -52,15 +52,15 @@ namespace IsochronePoc.Application.Tests
         [Fact]
         public void Then_Uri_Is_As_Expected_For_A_Single_Point_With_Standard_Encoding_And_Slash_In_Base_Uri()
         {
-            var origin = new Venue
+            var origin = new Location
             {
                 Latitude = 52.400997M,
                 Longitude = -1.295653M
             };
 
-            var destinations = new List<Venue>
+            var destinations = new List<Location>
             {
-                new Venue
+                new Location
                 {
                     Latitude = 51.742141M,
                     Longitude = -1.508122M
@@ -83,15 +83,15 @@ namespace IsochronePoc.Application.Tests
         [Fact]
         public void Then_Uri_Is_As_Expected_For_A_Single_Point_With_Standard_Encoding_And_No_Slash_In_Base_Uri()
         {
-            var origin = new Venue
+            var origin = new Location
             {
                 Latitude = 52.400997M,
                 Longitude = -1.295653M
             };
 
-            var destinations = new List<Venue>
+            var destinations = new List<Location>
             {
-                new Venue
+                new Location
                 {
                     Latitude = 51.742141M,
                     Longitude = -1.508122M
@@ -118,7 +118,7 @@ namespace IsochronePoc.Application.Tests
         [Fact]
         public void Then_Uri_Is_As_Expected_For_Multiple_Points_With_Standard_Encoding()
         {
-            var origin = new Venue
+            var origin = new Location
             {
                 Latitude = 40.6655101M,
                 Longitude = -73.89188969999998M
@@ -140,22 +140,22 @@ namespace IsochronePoc.Application.Tests
             //40.598566%2C-73.7527626&key=YOUR_API_KEY
 
 
-            var destinations = new List<Venue>
+            var destinations = new List<Location>
             {
-                new Venue { Latitude = 40.6905615M, Longitude = -73.9976592M },
-                new Venue { Latitude = 40.6905615M, Longitude = -73.9976592M },
-                new Venue { Latitude = 40.6905615M, Longitude = -73.9976592M },
-                new Venue { Latitude = 40.6905615M, Longitude = -73.9976592M },
-                new Venue { Latitude = 40.6905615M, Longitude = -73.9976592M },
-                new Venue { Latitude = 40.6905615M, Longitude = -73.9976592M },
-                new Venue { Latitude = 40.659569M, Longitude = -73.933783M   },
-                new Venue { Latitude = 40.729029M, Longitude = -73.851524M   },
-                new Venue { Latitude = 40.6860072M, Longitude = -73.6334271M },
-                new Venue { Latitude = 40.598566M, Longitude = -73.7527626M  },
-                new Venue { Latitude = 40.659569M, Longitude = -73.933783M  },
-                new Venue { Latitude = 40.729029M, Longitude = -73.851524M   },
-                new Venue { Latitude = 40.6860072M, Longitude = -73.6334271M },
-                new Venue { Latitude = 40.598566M, Longitude = -73.7527626M  }
+                new Location { Latitude = 40.6905615M, Longitude = -73.9976592M },
+                new Location { Latitude = 40.6905615M, Longitude = -73.9976592M },
+                new Location { Latitude = 40.6905615M, Longitude = -73.9976592M },
+                new Location { Latitude = 40.6905615M, Longitude = -73.9976592M },
+                new Location { Latitude = 40.6905615M, Longitude = -73.9976592M },
+                new Location { Latitude = 40.6905615M, Longitude = -73.9976592M },
+                new Location { Latitude = 40.659569M, Longitude = -73.933783M   },
+                new Location { Latitude = 40.729029M, Longitude = -73.851524M   },
+                new Location { Latitude = 40.6860072M, Longitude = -73.6334271M },
+                new Location { Latitude = 40.598566M, Longitude = -73.7527626M  },
+                new Location { Latitude = 40.659569M, Longitude = -73.933783M  },
+                new Location { Latitude = 40.729029M, Longitude = -73.851524M   },
+                new Location { Latitude = 40.6860072M, Longitude = -73.6334271M },
+                new Location { Latitude = 40.598566M, Longitude = -73.7527626M  }
             };
 
             var apiClient = new GoogleDistanceMatrixApiClient(new HttpClient(),
@@ -176,28 +176,28 @@ namespace IsochronePoc.Application.Tests
         [Fact]
         public void Then_Uri_Is_As_Expected_For_Multiple_Points_With_Polyline_Encoding()
         {
-            var origin = new Venue
+            var origin = new Location
             {
                 Latitude = 40.6655101M,
                 Longitude = -73.89188969999998M
             };
 
-            var destinations = new List<Venue>
+            var destinations = new List<Location>
             {
-                new Venue { Latitude = 40.6905615M, Longitude = -73.9976592M },
-                new Venue { Latitude = 40.6905615M, Longitude = -73.9976592M },
-                new Venue { Latitude = 40.6905615M, Longitude = -73.9976592M },
-                new Venue { Latitude = 40.6905615M, Longitude = -73.9976592M },
-                new Venue { Latitude = 40.6905615M, Longitude = -73.9976592M },
-                new Venue { Latitude = 40.6905615M, Longitude = -73.9976592M },
-                new Venue { Latitude = 40.659569M, Longitude = -73.933783M   },
-                new Venue { Latitude = 40.729029M, Longitude = -73.851524M   },
-                new Venue { Latitude = 40.6860072M, Longitude = -73.6334271M },
-                new Venue { Latitude = 40.598566M, Longitude = -73.7527626M  },
-                new Venue { Latitude = 40.659569M, Longitude = -73.933783M  },
-                new Venue { Latitude = 40.729029M, Longitude = -73.851524M   },
-                new Venue { Latitude = 40.6860072M, Longitude = -73.6334271M },
-                new Venue { Latitude = 40.598566M, Longitude = -73.7527626M  }
+                new Location { Latitude = 40.6905615M, Longitude = -73.9976592M },
+                new Location { Latitude = 40.6905615M, Longitude = -73.9976592M },
+                new Location { Latitude = 40.6905615M, Longitude = -73.9976592M },
+                new Location { Latitude = 40.6905615M, Longitude = -73.9976592M },
+                new Location { Latitude = 40.6905615M, Longitude = -73.9976592M },
+                new Location { Latitude = 40.6905615M, Longitude = -73.9976592M },
+                new Location { Latitude = 40.659569M, Longitude = -73.933783M   },
+                new Location { Latitude = 40.729029M, Longitude = -73.851524M   },
+                new Location { Latitude = 40.6860072M, Longitude = -73.6334271M },
+                new Location { Latitude = 40.598566M, Longitude = -73.7527626M  },
+                new Location { Latitude = 40.659569M, Longitude = -73.933783M  },
+                new Location { Latitude = 40.729029M, Longitude = -73.851524M   },
+                new Location { Latitude = 40.6860072M, Longitude = -73.6334271M },
+                new Location { Latitude = 40.598566M, Longitude = -73.7527626M  }
             };
 
             var apiClient = new GoogleDistanceMatrixApiClient(new HttpClient(),

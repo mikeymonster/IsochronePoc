@@ -5,6 +5,6 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
 {
     public interface IGoogleDistanceMatrixApiClient
     {
-        Task<IList<DistanceSearchResult>> Search(Venue origin, IList<Venue> venues);
+        Task<IList<DistanceSearchResult>> Search(Location origin, IList<Location> venues);
     }
 }
