@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -9,7 +8,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 namespace IsochronePoc.Application.GoogleDistanceMatrixApi
 {
@@ -18,6 +16,9 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
         private readonly HttpClient _httpClient;
         private readonly ApiConfiguration _configuration;
         private static readonly object ListLocker = new object();
+
+        private readonly bool _useEncodedPolyline;
+        private readonly int _batchSize;
 
         public GoogleDistanceMatrixApiClient(HttpClient httpClient, ApiConfiguration configuration)
         {
@@ -28,12 +29,14 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
 
             _httpClient.DefaultRequestHeaders.Accept.Clear();
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            _useEncodedPolyline = false;
+            _batchSize = _useEncodedPolyline ? 1000 : 100;
         }
 
         public async Task<IList<DistanceSearchResult>> Search(Venue origin, IList<Venue> venues)
         {
-            const int batchSize = 100; //Max client-side elements: 100
-            var batches = CreateBatches(venues, batchSize);
+            var batches = CreateBatches(venues, _batchSize);
             var results = new List<GoogleDistanceMatrixResponse>();
 
             var stopwatch = Stopwatch.StartNew();
@@ -56,7 +59,7 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
             });
 
             stopwatch.Stop();
-            Console.WriteLine($"Have {results.Count} results from {batches.Count} batches of {batchSize} in {stopwatch.ElapsedMilliseconds:#,###}ms");
+            Console.WriteLine($"Have {results.Count} results from {batches.Count} batches of {_batchSize} in {stopwatch.ElapsedMilliseconds:#,###}ms");
 
             foreach (var x in results)
             {
@@ -145,7 +148,6 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
                         Console.WriteLine(e);
                         throw;
                     }
-
                 }
             }
 
@@ -173,37 +175,11 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
             {
                 //https://developers.google.com/maps/documentation/distance-matrix/intro
 
-                //Call:
-                //http://maps.googleapis.com/maps/api/distancematrix/outputFormat?parameters
-                //var uri = "distancematrix";
-                //NOTE: Assumes api url already has ending /
-                var uriBuilder = new StringBuilder($@"{_configuration.GoogleMapsApiBaseUrl}distancematrix/json?");
-
-                uriBuilder.Append($"origins={origin.Latitude}%2C{origin.Longitude}");
-                uriBuilder.Append($"&mode={travelMode}");
-                uriBuilder.Append("&destinations=");
-
-                for (int i = 0; i < venues.Count; i++)
-                {
-                    var venue = venues[i];
-
-                    if (i > 0)
-                    {
-                        uriBuilder.Append($"%7C");
-                    }
-                    //uriBuilder.Append($"{venue.Latitude}%2C{venue.Longitude}");
-                    //uriBuilder.Append($"{WebUtility.UrlEncode(venue.Postcode)}");
-                    uriBuilder.Append($"{venue.Postcode.Replace(" ", "")}");
-                }
-
-                uriBuilder.Append($"&key={_configuration.GoogleMapsApiKey}");
-
-                Console.WriteLine("Calling google distance matrix api with uri");
-                Console.WriteLine(uriBuilder);
+                var uri = BuildUri(origin, venues, travelMode, _useEncodedPolyline);
 
                 var stopwatch = Stopwatch.StartNew();
 
-                var response = await _httpClient.GetAsync(uriBuilder.ToString());
+                var response = await _httpClient.GetAsync(uri);
 
                 stopwatch.Stop();
 
@@ -215,15 +191,15 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
                 //Console.WriteLine(content);
                 //Debug.WriteLine(content);
 
-                var settings = new JsonSerializerSettings
-                {
-                    MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
-                    DateParseHandling = DateParseHandling.None,
-                    Converters =
-                    {
-                        new IsoDateTimeConverter {DateTimeStyles = DateTimeStyles.AssumeUniversal}
-                    }
-                };
+                //var settings = new JsonSerializerSettings
+                //{
+                //    MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
+                //    DateParseHandling = DateParseHandling.None,
+                //    Converters =
+                //    {
+                //        new IsoDateTimeConverter {DateTimeStyles = DateTimeStyles.AssumeUniversal}
+                //    }
+                //};
 
                 using (var stream = await response.Content.ReadAsStreamAsync())
                 using (var reader = new StreamReader(stream))
@@ -241,6 +217,64 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
                 Console.WriteLine($"Failure calling google api - {ex}");
                 throw;
             }
+        }
+
+        public string BuildUri(Venue origin, IList<Venue> venues, string travelMode, bool useEncodedPolyline)
+        {
+            //http://maps.googleapis.com/maps/api/distancematrix/outputFormat?parameters
+            //var uri = "distancematrix";
+            //NOTE: Assumes api url already has ending /
+            var uriBuilder = new StringBuilder($@"{_configuration.GoogleMapsApiBaseUrl}");
+            if (!_configuration.GoogleMapsApiBaseUrl.EndsWith("/"))
+            {
+                uriBuilder.Append("/");
+            }
+            uriBuilder.Append("distancematrix/json?");
+
+            uriBuilder.Append($"origins={origin.Latitude},{origin.Longitude}");
+            uriBuilder.Append($"&mode={travelMode}");
+            uriBuilder.Append("&destinations=");
+
+            if (useEncodedPolyline)
+            {
+                uriBuilder.Append("enc:");
+                uriBuilder.Append(EncodePolyline(venues));
+            }
+            else
+            {
+                for (var i = 0; i < venues.Count; i++)
+                {
+                    var venue = venues[i];
+
+                    if (i > 0)
+                    {
+                        uriBuilder.Append($"%7C");
+                    }
+
+                    uriBuilder.Append($"{venue.Latitude}%2C{venue.Longitude}");
+                    //uriBuilder.Append($"{WebUtility.UrlEncode(venue.Postcode)}");
+                    //uriBuilder.Append($"{venue.Postcode.Replace(" ", "")}");
+                }
+            }
+
+            uriBuilder.Append($"&key={_configuration.GoogleMapsApiKey}");
+
+            Console.WriteLine("Calling google distance matrix api with uri");
+            Console.WriteLine(uriBuilder);
+
+            var uri = uriBuilder.ToString();
+            return uri;
+        }
+
+        public string EncodePolyline(IList<Venue> venues)
+        {
+            var sb = new StringBuilder();
+            for (var i = 0; i < venues.Count; i++)
+            {
+                sb.Append("");
+            }
+
+            return sb.ToString();
         }
     }
 }
