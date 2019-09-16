@@ -14,12 +14,7 @@ namespace IsochronePoc.Application.Tests
         {
             var points = new List<Venue>
             {
-                new Venue
-                {
-                    Latitude = 52.400997M,
-                    Longitude = -1.508122M
-
-                }
+                new Venue { Latitude = 52.400997M, Longitude = -1.508122M }
             };
 
             var apiClient = new GoogleDistanceMatrixApiClient(new HttpClient(),
@@ -31,6 +26,27 @@ namespace IsochronePoc.Application.Tests
             var result = apiClient.EncodePolyline(points);
 
             result.Should().Be("gqy~HvpeH");
+        }
+
+        [Fact]
+        public void Then_Encoded_Polyline_Is_As_Expected_For_Multiple_Points()
+        {
+            var points = new List<Venue>
+            {
+                new Venue { Latitude = 38.5M, Longitude = -120.2M },
+                new Venue { Latitude = 40.7M, Longitude = -120.95M },
+                new Venue { Latitude = 43.252M, Longitude = -126.453M }
+            };
+
+            var apiClient = new GoogleDistanceMatrixApiClient(new HttpClient(),
+                new ApiConfiguration
+                {
+                    GoogleMapsApiBaseUrl = "https://maps.googleapis.com/maps/api/"
+                });
+
+            var result = apiClient.EncodePolyline(points);
+
+            result.Should().Be("_p~iF~ps|U_ulLnnqC_mqNvxq`@");
         }
 
         [Fact]
@@ -107,6 +123,22 @@ namespace IsochronePoc.Application.Tests
                 Latitude = 40.6655101M,
                 Longitude = -73.89188969999998M
             };
+
+            //40.6905615%2C-73.9976592
+            //40.6905615%2C-73.9976592
+            //40.6905615%2C-73.9976592
+            //40.6905615%2C-73.9976592
+            //40.6905615%2C-73.9976592
+            //40.6905615%2C-73.9976592
+            //40.659569%2C-73.933783
+            //40.729029%2C-73.851524
+            //40.6860072%2C-73.6334271
+            //40.598566%2C-73.7527626
+            //40.659569%2C-73.933783
+            //40.729029%2C-73.851524
+            //40.6860072%2C-73.6334271
+            //40.598566%2C-73.7527626&key=YOUR_API_KEY
+
 
             var destinations = new List<Venue>
             {

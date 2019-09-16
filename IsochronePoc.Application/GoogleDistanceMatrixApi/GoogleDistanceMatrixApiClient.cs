@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -238,7 +239,21 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
             if (useEncodedPolyline)
             {
                 uriBuilder.Append("enc:");
-                uriBuilder.Append(EncodePolyline(venues));
+
+                //var polyline = EncodeCoordinates(venues);
+                var polyline = EncodePolyline(venues);
+                polyline = WebUtility.UrlEncode(polyline);
+
+                uriBuilder.Append(polyline);
+
+                //for (var i = 0; i < venues.Count; i++)
+                //{
+                //    if (i > 0) uriBuilder.Append("%40");
+
+                //    uriBuilder.Append(EncodePolyline(new List<Venue> { venues[i] }));
+                //}
+
+                uriBuilder.Append(":");
             }
             else
             {
@@ -246,10 +261,7 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
                 {
                     var venue = venues[i];
 
-                    if (i > 0)
-                    {
-                        uriBuilder.Append($"%7C");
-                    }
+                    if (i > 0) uriBuilder.Append("%7C");
 
                     uriBuilder.Append($"{venue.Latitude}%2C{venue.Longitude}");
                     //uriBuilder.Append($"{WebUtility.UrlEncode(venue.Postcode)}");
@@ -266,15 +278,97 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
             return uri;
         }
 
-        public string EncodePolyline(IList<Venue> venues)
+        //Implementation from https://gist.github.com/shinyzhu/4617989
+        public string EncodePolyline(IList<Venue> points)
         {
             var sb = new StringBuilder();
-            for (var i = 0; i < venues.Count; i++)
-            {
-                sb.Append("");
-            }
 
+            var encodeDiff = (Action<int>)(diff =>
+            {
+                var shifted = diff << 1;
+                if (diff < 0)
+                    shifted = ~shifted;
+
+                var rem = shifted;
+
+                while (rem >= 0x20)
+                {
+                    sb.Append((char)((0x20 | (rem & 0x1f)) + 63));
+
+                    rem >>= 5;
+                }
+
+                sb.Append((char)(rem + 63));
+            });
+
+            var lastLat = 0;
+            var lastLng = 0;
+
+            foreach (var point in points)
+            {
+                var lat = (int)Math.Round((double)point.Latitude * 1E5);
+                var lng = (int)Math.Round((double)point.Longitude * 1E5);
+
+                if (lat == lastLat || lng == lastLng)
+                    continue;
+
+                encodeDiff(lat - lastLat);
+                encodeDiff(lng - lastLng);
+
+                lastLat = lat;
+                lastLng = lng;
+            }
             return sb.ToString();
+        }
+
+        //Implementation from https://briancaos.wordpress.com/2009/10/16/google-maps-polyline-encoding-in-c/
+        public static string EncodeCoordinates(IList<Venue> coordinates)
+        {
+            int plat = 0;
+            int plng = 0;
+            StringBuilder encodedCoordinates = new StringBuilder();
+            foreach (var coordinate in coordinates)
+            {
+                // Round to 5 decimal places and drop the decimal
+                int late5 = (int)Math.Round((double)coordinate.Latitude * 1e5, MidpointRounding.AwayFromZero);
+                int lnge5 = (int)Math.Round((double)coordinate.Longitude * 1e5, MidpointRounding.AwayFromZero);
+                // Encode the differences between the coordinates
+
+                if (late5 == plat || lnge5 == plng)
+                    continue;
+
+                encodedCoordinates.Append(EncodeSignedNumber(late5 - plat));
+                encodedCoordinates.Append(EncodeSignedNumber(lnge5 - plng));
+                // Store the current coordinates
+                plat = late5;
+                plng = lnge5;
+            }
+            return encodedCoordinates.ToString();
+        }
+
+        private static string EncodeSignedNumber(int num)
+        {
+            int sgn_num = num << 1; //shift the binary value
+            if (num < 0) //if negative invert
+            {
+                sgn_num = ~(sgn_num);
+            }
+            return (EncodeNumber(sgn_num));
+        }
+
+
+        private static string EncodeNumber(int num)
+        {
+            StringBuilder encodeString = new StringBuilder();
+            while (num >= 0x20)
+            {
+                encodeString.Append((char)((0x20 | (num & 0x1f)) + 63));
+                num >>= 5;
+            }
+            encodeString.Append((char)(num + 63));
+            // All backslashes needs to be replaced with double backslashes
+            // before being used in a Javascript string.
+            return encodeString.ToString().Replace(@"\", @"\\");
         }
     }
 }
