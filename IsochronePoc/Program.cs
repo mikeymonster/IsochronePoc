@@ -45,6 +45,7 @@ namespace IsochronePoc
 
             do
             {
+                Console.WriteLine();
                 Console.WriteLine("Select an option using the number (or Enter for the default)");
                 Console.WriteLine("  1 = Run google search");
                 Console.WriteLine("  2 = Run TravelTime travel time search (default)");
@@ -53,7 +54,9 @@ namespace IsochronePoc
                 Console.WriteLine("  5 = Create sample SQL query from isochrone Run json");
                 Console.WriteLine("  6 = Lookup postcodes");
                 Console.WriteLine("Press any other key to exit");
-                Console.WriteLine("");
+                Console.WriteLine();
+
+                var liveVenuesFilePath = @".\Data\LiveProviderVenues.csv";
 
                 try
                 {
@@ -64,22 +67,20 @@ namespace IsochronePoc
                     {
                         case ConsoleKey.D1:
                         case ConsoleKey.NumPad1:
-                            await GetGoogleResult(@".\Data\LiveProviderVenues.csv");
+                            await GetGoogleResult(liveVenuesFilePath);
                             break;
                         case ConsoleKey.D2:
                         case ConsoleKey.NumPad2:
-                            var venues = await GetVenuesFromCsv(@".\Data\LiveProviderVenues.csv");
                             await GetTravelTimeFilterResult("CV1 2WT",
                                 52.400997M, -1.508122M,
-                                venues);
+                                await GetVenuesFromCsv(liveVenuesFilePath));
                             break;
                         case ConsoleKey.D3:
                         case ConsoleKey.NumPad3:
                         case ConsoleKey.Enter:
-                            //var venues = await GetVenuesFromCsv(@".\Data\LiveProviderVenues.csv");
                             await GetTravelTimeFilterFastResult("CV1 2WT",
                                 52.400997M, -1.508122M,
-                                GetVenuesFromCsv(@".\Data\LiveProviderVenues.csv").GetAwaiter().GetResult());
+                                await GetVenuesFromCsv(liveVenuesFilePath));
                             break;
                         case ConsoleKey.D4:
                         case ConsoleKey.NumPad4:
@@ -154,48 +155,50 @@ namespace IsochronePoc
             var searchResults = await client.Search(startPoint, venues);
 
             stopwatch.Stop();
+
+            var reachableResults = searchResults.Where(r => r.TravelTime <= 60 * 60).ToList();
+
             Console.WriteLine();
-            Console.WriteLine($"Retrieved {searchResults.Count} search results in  in {stopwatch.ElapsedMilliseconds:#,###}ms");
+            Console.WriteLine($"Retrieved {searchResults.Count} search results from {venues.Count} venues ({reachableResults.Count} reachable) in {stopwatch.ElapsedMilliseconds:#,###}ms");
 
-            Console.WriteLine("Results that could not be determined:");
-            foreach (var searchResult in searchResults.Where(x => x.Distance < 0 || x.TravelTime < 0))
-            {
-                Console.WriteLine($"{searchResult.Address} at {searchResult.Distance}{searchResult.DistanceUnits}, travel time {searchResult.TravelTimeString}");
-            }
+            //Console.WriteLine("Results that could not be determined:");
+            //foreach (var searchResult in searchResults.Where(x => x.Distance < 0 || x.TravelTime < 0))
+            //{
+            //    Console.WriteLine($"{searchResult.Address} at {searchResult.Distance}{searchResult.DistanceUnits}, travel time {searchResult.TravelTimeString}");
+            //}
 
-            foreach (var searchResult in searchResults.OrderByDescending(x => x.TravelTime))
-            {
-                //TODO: Check api docs - can we ask for miles?
-                if (searchResult.DistanceUnits != "km")
-                {
-                }
-
-                var distanceInKm = searchResult.Distance / 1000;
-                var distanceInMiles = searchResult.Distance / 1609.34;
-                Console.WriteLine($"{searchResult.Address} at {distanceInMiles:#.0}mi ({distanceInKm:#.0}km), travel time {searchResult.TravelTimeString}");
-            }
+            //foreach (var searchResult in searchResults.OrderByDescending(x => x.TravelTime))
+            //{
+            //    var distanceInKm = searchResult.Distance / 1000;
+            //    var distanceInMiles = searchResult.Distance / 1609.34;
+            //    Console.WriteLine($"{searchResult.Address} at {distanceInMiles:#.0}mi ({distanceInKm:#.0}km), travel time {searchResult.TravelTimeString}");
+            //}
         }
+
         public static async Task GetTravelTimeFilterResult(string postcode, decimal latitude, decimal longitude, IList<Location> venues)
         {
             Console.WriteLine($"Have {venues.Count} venues");
 
             var client = new TravelTimeFilterApiClient(new HttpClient(), Configuration);
 
-            var outputPath = $@".\Data\sample_{postcode.Replace(" ", "_")}.json";
-
-            var result = await client.Search(postcode, latitude, longitude, venues);
-            //var path = @".\Data\sample_isochrone.json";
-
-            using (var writer = File.CreateText(outputPath))
-            using (var jsonWriter = new JsonTextWriter(writer))
-            {
-                jsonWriter.WriteRaw(result);
-            }
+            //var outputPath = $@".\Data\sample_{postcode.Replace(" ", "_")}.json";
 
             var stopwatch = Stopwatch.StartNew();
 
+            var searchResults = await client.Search(postcode, latitude, longitude, venues);
+
             stopwatch.Stop();
-            //Console.WriteLine($"Retrieved {searchResults.Count} search results in  in {stopwatch.ElapsedMilliseconds:#,###}ms");
+
+            Console.WriteLine();
+            Console.WriteLine($"Retrieved {searchResults.Count} search results from {venues.Count} venues in {stopwatch.ElapsedMilliseconds:#,###}ms");
+
+            //var path = @".\Data\sample_isochrone.json";
+
+            //using (var writer = File.CreateText(outputPath))
+            //using (var jsonWriter = new JsonTextWriter(writer))
+            //{
+            //    jsonWriter.WriteRaw(searchResults);
+            //}
         }
 
         public static async Task GetTravelTimeFilterFastResult(string postcode, decimal latitude, decimal longitude, IList<Location> venues)
@@ -206,19 +209,20 @@ namespace IsochronePoc
 
             var outputPath = $@".\Data\sample_{postcode.Replace(" ", "_")}.json";
 
-            var result = await client.Search(postcode, latitude, longitude, venues);
-            //var path = @".\Data\sample_isochrone.json";
-
-            using (var writer = File.CreateText(outputPath))
-            using (var jsonWriter = new JsonTextWriter(writer))
-            {
-                jsonWriter.WriteRaw(result);
-            }
-
             var stopwatch = Stopwatch.StartNew();
 
+            var searchResults = await client.Search(postcode, latitude, longitude, venues);
+            //var path = @".\Data\sample_isochrone.json";
+
             stopwatch.Stop();
-            //Console.WriteLine($"Retrieved {searchResults.Count} search results in  in {stopwatch.ElapsedMilliseconds:#,###}ms");
+            Console.WriteLine();
+            Console.WriteLine($"Retrieved {searchResults.Count} search results from {venues.Count} venues in {stopwatch.ElapsedMilliseconds:#,###}ms");
+
+            //using (var writer = File.CreateText(outputPath))
+            //using (var jsonWriter = new JsonTextWriter(writer))
+            //{
+            //    jsonWriter.WriteRaw(searchResults);
+            //}
         }
 
         public static async Task GetTravelTimeIsochroneResult()
@@ -347,7 +351,7 @@ namespace IsochronePoc
 
             return venues;
         }
-        
+
         public static async Task<IList<Location>> GetVenuesFromCsv(string path)
         {
             var venues = new List<Location>();

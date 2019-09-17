@@ -14,7 +14,7 @@ namespace IsochronePoc.Application.TravelTimeFilterFastApi
         public string SearchId { get; set; }
 
         [JsonProperty("locations")]
-        public ResponseLocation[] ResponseLocation { get; set; }
+        public ResponseLocation[] ResponseLocations { get; set; }
 
         [JsonProperty("unreachable")]
         public string[] Unreachable { get; set; }

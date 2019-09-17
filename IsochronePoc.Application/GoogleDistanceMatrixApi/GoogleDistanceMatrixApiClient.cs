@@ -31,8 +31,8 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
             _httpClient.DefaultRequestHeaders.Accept.Clear();
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            _useEncodedPolyline = false;
-            _batchSize = _useEncodedPolyline ? 100 : 100;
+            _useEncodedPolyline = true;
+            _batchSize = 100;
         }
 
         public async Task<IList<DistanceSearchResult>> Search(Location origin, IList<Location> venues)
@@ -45,7 +45,7 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
             Parallel.ForEach(batches, batch =>
             {
                 var (key, value) = batch;
-                Console.WriteLine($"Processing batch {key} of size {value.Count}");
+                //Console.WriteLine($"Processing batch {key} of size {value.Count}");
 
                 //Don't use async on body of Parallel.ForEach and wait here - it doesn't block
                 //var response = await SearchBatch(origin, value);
@@ -60,16 +60,15 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
             });
 
             stopwatch.Stop();
-            Console.WriteLine($"Have {results.Count} results from {batches.Count} batches of {_batchSize} in {stopwatch.ElapsedMilliseconds:#,###}ms");
+            //Console.WriteLine($"Have {results.Count} results from {batches.Count} batches of {_batchSize} in {stopwatch.ElapsedMilliseconds:#,###}ms");
 
-            foreach (var x in results)
-            {
-                Console.WriteLine($"{x.Rows.Length} - {x.DestinationAddresses.Length}");
-            }
+            //foreach (var x in results)
+            //{
+            //    Console.WriteLine($"{x.Rows.Length} - {x.DestinationAddresses.Length}");
+            //}
 
             //results = results.Where(x => x.DestinationAddresses.Length < 100).ToList();
-            var distanceSearchResults = await BuildGoogleResults(results);
-            return distanceSearchResults;
+            return await BuildGoogleResults(results);
         }
 
         private Task<IList<DistanceSearchResult>> BuildGoogleResults(List<GoogleDistanceMatrixResponse> responses)
@@ -85,40 +84,40 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
                     throw new Exception(message);
                 }
 
-                Console.WriteLine($"Have {item.Rows.Length} rows, {item.DestinationAddresses.Length} destinations, {item.OriginAddresses.Length}");
+                //Console.WriteLine($"Have {item.Rows.Length} rows, {item.DestinationAddresses.Length} destinations, {item.OriginAddresses.Length}");
 
-                Console.WriteLine("OriginAddresses:");
-                foreach (var origin in item.OriginAddresses)
-                {
-                    Console.WriteLine($"  {origin}");
-                }
+                //Console.WriteLine("OriginAddresses:");
+                //foreach (var origin in item.OriginAddresses)
+                //{
+                //    Console.WriteLine($"  {origin}");
+                //}
 
-                Console.WriteLine("DestinationAddresses:");
-                foreach (var destination in item.DestinationAddresses)
-                {
-                    Console.WriteLine($"  {destination}");
-                }
+                //Console.WriteLine("DestinationAddresses:");
+                //foreach (var destination in item.DestinationAddresses)
+                //{
+                //    Console.WriteLine($"  {destination}");
+                //}
 
                 //Results are returned in rows, each row containing one origin paired with each destination.
                 //Since we know there is only one origin, we should be able to assume
                 //that the number of destinations == number of rows
-                Console.WriteLine("Rows:");
-                foreach (var row in item.Rows)
-                {
-                    Console.WriteLine($"  Row has {row.Elements.Length} elements");
-                    foreach (var element in row.Elements)
-                    {
-                        try
-                        {
-                            Console.WriteLine($"    {element.Status}, {element.Distance?.Text}: {element.Distance?.Value}, {element.Duration?.Text}: {element.Duration?.Value}");
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine(e);
-                            throw;
-                        }
-                    }
-                }
+                //Console.WriteLine("Rows:");
+                //foreach (var row in item.Rows)
+                //{
+                //    Console.WriteLine($"  Row has {row.Elements.Length} elements");
+                //    foreach (var element in row.Elements)
+                //    {
+                //        try
+                //        {
+                //            Console.WriteLine($"    {element.Status}, {element.Distance?.Text}: {element.Distance?.Value}, {element.Duration?.Text}: {element.Duration?.Value}");
+                //        }
+                //        catch (Exception e)
+                //        {
+                //            Console.WriteLine(e);
+                //            throw;
+                //        }
+                //    }
+                //}
 
                 //Func<string, TimeSpan> convertTime = (string x) =>
                 //{
@@ -126,7 +125,7 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
                 //};
 
                 var currentRow = item.Rows[0];
-                for (int i = 0; i < item.DestinationAddresses.Length; i++)
+                for (var i = 0; i < item.DestinationAddresses.Length; i++)
                 {
                     var element = currentRow.Elements[i];
                     var destination = item.DestinationAddresses[i];
@@ -184,7 +183,7 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
 
                 stopwatch.Stop();
 
-                Console.WriteLine($"Received {response.StatusCode} in {stopwatch.ElapsedMilliseconds:#,###}ms");
+                //Console.WriteLine($"Received {response.StatusCode} in {stopwatch.ElapsedMilliseconds:#,###}ms");
 
                 response.EnsureSuccessStatusCode();
 
@@ -271,8 +270,8 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
 
             uriBuilder.Append($"&key={_configuration.GoogleMapsApiKey}");
 
-            Console.WriteLine("Calling google distance matrix api with uri");
-            Console.WriteLine(uriBuilder);
+            //Console.WriteLine("Calling google distance matrix api with uri:");
+            //Console.WriteLine($"  {uriBuilder}");
 
             var uri = uriBuilder.ToString();
             return uri;

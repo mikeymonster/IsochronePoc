@@ -32,7 +32,7 @@ namespace IsochronePoc.Application.TravelTimeFilterFastApi
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
-        public async Task<string> Search(string postcode, decimal latitude, decimal longitude, IList<Application.Location> locations)
+        public async Task<IList<DistanceSearchResult>> Search(string postcode, decimal latitude, decimal longitude, IList<Application.Location> locations)
         {            //https://docs.traveltimeplatform.com/reference/time-filter
 
             // The departure time in an ISO format.
@@ -70,9 +70,9 @@ namespace IsochronePoc.Application.TravelTimeFilterFastApi
                         }
                     }).ToArray(),
                 ArrivalSearches = new ArrivalSearches
-                    {
-                        ManyToOne = new ManyToOne[0],
-                        OneToMany = new OneToMany[]
+                {
+                    ManyToOne = new ManyToOne[0],
+                    OneToMany = new OneToMany[]
                         {
                             new OneToMany
                             {
@@ -112,11 +112,11 @@ namespace IsochronePoc.Application.TravelTimeFilterFastApi
 
             var jsonRequest = JsonConvert.SerializeObject(searchRequest, serializerSettings);
 
-            Console.WriteLine();
-            Console.WriteLine($"Searching for locations near {postcode} at lat/long {latitude}, {longitude}");
-            Console.WriteLine();
-            Console.WriteLine($"Json request:\r\n{jsonRequest}");
-            Console.WriteLine();
+            //Console.WriteLine();
+            //Console.WriteLine($"Searching for locations near {postcode} at lat/long {latitude}, {longitude}");
+            //Console.WriteLine();
+            //Console.WriteLine($"Json request:\r\n{jsonRequest}");
+            //Console.WriteLine();
 
             var stopwatch = Stopwatch.StartNew();
 
@@ -127,7 +127,7 @@ namespace IsochronePoc.Application.TravelTimeFilterFastApi
 
             stopwatch.Stop();
 
-            Console.WriteLine($"Received {response.StatusCode} in {stopwatch.ElapsedMilliseconds:#,###}ms");
+            //Console.WriteLine($"Received {response.StatusCode} in {stopwatch.ElapsedMilliseconds:#,###}ms");
 
             var jsonResponse = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
@@ -136,8 +136,8 @@ namespace IsochronePoc.Application.TravelTimeFilterFastApi
                 Console.WriteLine($"Status code {response.StatusCode}, reason {response.ReasonPhrase}");
             }
 
-            Console.WriteLine($"json: {jsonResponse}");
-            Console.WriteLine();
+            //Console.WriteLine($"json: {jsonResponse}");
+            //Console.WriteLine();
 
             response.EnsureSuccessStatusCode();
 
@@ -151,20 +151,48 @@ namespace IsochronePoc.Application.TravelTimeFilterFastApi
                 jsonWriter.WriteRaw(jsonResponse);
             }
 
-            var obj = JsonConvert.DeserializeObject<TravelTimeFilterFastSearchResponse>(jsonResponse, serializerSettings);
+            var responseObject = JsonConvert.DeserializeObject<TravelTimeFilterFastSearchResponse>(jsonResponse, serializerSettings);
+            return await BuildResults(responseObject);
 
-            using (var stream = await response.Content.ReadAsStreamAsync())
-            using (var reader = new StreamReader(stream))
-            using (var jsonReader = new JsonTextReader(reader))
+            //using (var stream = await response.Content.ReadAsStreamAsync())
+            //using (var reader = new StreamReader(stream))
+            //using (var jsonReader = new JsonTextReader(reader))
+            //{
+            //    var serializer = new JsonSerializer();
+            //    var result = (TravelTimeFilterFastSearchResponse)serializer.Deserialize(jsonReader,
+            //        typeof(TravelTimeFilterFastSearchResponse));
+
+            //    //return result;
+            //}
+
+            //return jsonResponse;
+        }
+
+        private Task<IList<DistanceSearchResult>> BuildResults(TravelTimeFilterFastSearchResponse response)
+        {
+            var result = new List<DistanceSearchResult>();
+            foreach (var item in response.Results)
             {
-                var serializer = new JsonSerializer();
-                var result = (TravelTimeFilterFastSearchResponse)serializer.Deserialize(jsonReader,
-                    typeof(TravelTimeFilterFastSearchResponse));
-
-                //return result;
+                foreach (var destination in item.ResponseLocations)
+                {
+                    try
+                    {
+                        result.Add(new DistanceSearchResult
+                        {
+                            Id = int.Parse(destination.Id),
+                            //Distance = ,
+                            TravelTime = destination.Properties.TravelTime
+                        });
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                        throw;
+                    }
+                }
             }
 
-            return jsonResponse;
+            return Task.FromResult((IList<DistanceSearchResult>)result);
         }
     }
 }

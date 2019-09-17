@@ -4,6 +4,7 @@ namespace IsochronePoc.Application
 {
     public class DistanceSearchResult
     {
+        public int Id { get; set; }
         public string Address { get; set; }
         public string DistanceUnits { get; set; }
         public double Distance { get; set; }
