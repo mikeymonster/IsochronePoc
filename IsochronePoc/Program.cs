@@ -313,7 +313,18 @@ namespace IsochronePoc
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"{postcode} failed - {ex.Message}");
+                    Console.WriteLine($"Lookup of {postcode} failed - {ex.Message}");
+
+                    try
+                    {
+                        var location = await locationClient.GetTerminatedPostcodeGeoLocationData(postcode);
+                        Console.WriteLine($"Terminated - {location.Postcode} - {location.Latitude}, {location.Longitude}. Terminated {location.TerminatedMonth}-{location.TerminatedYear}");
+                        locations.Add(location);
+                    }
+                    catch (Exception e2)
+                    {
+                        Console.WriteLine($"Lookup of terminated {postcode} failed - {e2.Message}");
+                    }
                 }
             }
 

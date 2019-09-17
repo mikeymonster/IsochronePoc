@@ -7,7 +7,13 @@ namespace IsochronePoc.Application.GeoLocations
 {
     public interface ILocationApiClient
     {
-        Task<Location> GetGeoLocationData(string postCode);
+        Task<(bool, string)> IsTerminatedPostcode(string postcode);
 
+        Task<(bool, string)> IsValidPostcode(string postcode);
+
+        Task<Location> GetGeoLocationData(string postcode);
+
+        Task<Location> GetTerminatedPostcodeGeoLocationData(string postcode);
     }
 }
+                   
