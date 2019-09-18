@@ -11,6 +11,9 @@ Sample search:
 Travel time time filter:
   https://docs.traveltimeplatform.com/reference/time-filter
 
+Travel time time filter (fast):
+  https://docs.traveltimeplatform.com/reference/time-filter-fast
+
 WITH polygons
  AS (SELECT 'p1' id, 
             geography::STGeomFromText('polygon ((-113.754429 52.471834 , 1 5, 5 5, -113.754429 52.471834))', 4326) poly
@@ -27,3 +30,39 @@ WITH polygons
 Convert json to C# class - https://app.quicktype.io/#l=cs&r=json2csharp
 
 Google API documentation: https://developers.google.com/maps/documentation/distance-matrix/start
+
+
+# Notes on POC
+
+## google api  
+
+We are already paying for this
+Returns travel times for all locations passed in
+We can filter on travel times and have all times visible on screen, even if one over one hour
+Max 100 elements per call (GET) so large requests have to be batched
+Slower
+Google unlikely to go away and my enhance their search further
+
+## travel time
+
+Fast API returns quickly but is limited to returning times and fares.
+Fast API has limited travel modes (but nough for our current needs)
+Fast API returns travel times only for those within the search time
+
+What about results over 1 hour? e.g. driving 50 mins, public transport not reachable
+ - how to display?
+ - search for a longer time to give a chance of more travel times, and filter?
+
+TODO: Try driving+public_transport as third search - what results?
+
+Will need to buy licenses - see https://www.traveltimeplatform.com/search/pricing
+Basic (100K searches at £600 per month) should be fine for us. Each query by us is 2 searches, or 4 if we do a zero results search. We are currently below 10K user requests per month.
+
+
+## For all
+
+Can only use a single travel mode, so need to do two calls per search (run in parallel)
+Approach is to filter locations based on route, then pass those to the API to get travel times
+What about the "zero results" search? Would be slower if getting times
+ - in the last month 987 zero results shown out of 7803, about 12.5%
+
