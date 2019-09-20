@@ -355,7 +355,6 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
             return (EncodeNumber(sgn_num));
         }
 
-
         private static string EncodeNumber(int num)
         {
             StringBuilder encodeString = new StringBuilder();
@@ -368,6 +367,85 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
             // All backslashes needs to be replaced with double backslashes
             // before being used in a Javascript string.
             return encodeString.ToString().Replace(@"\", @"\\");
+        }
+
+        ///////////////////////////////
+        public async Task<IList<DistanceSearchResult>> SearchJourney(string workplaceKey, List<Journey> destinations, string travelMode = "driving")
+        {
+            try
+            {
+                //https://developers.google.com/maps/documentation/distance-matrix/intro
+
+
+                //BuildUri()
+                var uriBuilder = new StringBuilder($@"{_configuration.GoogleMapsApiBaseUrl}");
+                if (!_configuration.GoogleMapsApiBaseUrl.EndsWith("/"))
+                {
+                    uriBuilder.Append("/");
+                }
+                uriBuilder.Append("distancematrix/json?");
+
+                uriBuilder.Append($"origins={workplaceKey}");
+                uriBuilder.Append($"&mode={travelMode}");
+                uriBuilder.Append("&destinations=");
+
+                for (var i = 0; i < destinations.Count; i++)
+                {
+                    if (i > 0) uriBuilder.Append("%7C");
+
+                    uriBuilder.Append($"{WebUtility.UrlEncode(destinations[i].ProviderVenue)}");
+                    //uriBuilder.Append($"{venue.Postcode.Replace(" ", "")}");
+                }
+
+                uriBuilder.Append($"&key={_configuration.GoogleMapsApiKey}");
+
+                var uri = uriBuilder.ToString();
+
+
+
+
+                var stopwatch = Stopwatch.StartNew();
+
+                var response = await _httpClient.GetAsync(uri);
+
+                stopwatch.Stop();
+
+                //Console.WriteLine($"Received {response.StatusCode} in {stopwatch.ElapsedMilliseconds:#,###}ms");
+
+                response.EnsureSuccessStatusCode();
+
+                //var content = await response.Content.ReadAsStringAsync();
+                //Console.WriteLine(content);
+                //Debug.WriteLine(content);
+
+                //var settings = new JsonSerializerSettings
+                //{
+                //    MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
+                //    DateParseHandling = DateParseHandling.None,
+                //    Converters =
+                //    {
+                //        new IsoDateTimeConverter {DateTimeStyles = DateTimeStyles.AssumeUniversal}
+                //    }
+                //};
+
+                using (var stream = await response.Content.ReadAsStreamAsync())
+                using (var reader = new StreamReader(stream))
+                using (var jsonReader = new JsonTextReader(reader))
+                {
+                    var serializer = new JsonSerializer();
+                    var result = (GoogleDistanceMatrixResponse)serializer.Deserialize(jsonReader,
+                            typeof(GoogleDistanceMatrixResponse));
+
+                    //return result;
+                    var finalResult = await BuildGoogleResults(new List<GoogleDistanceMatrixResponse> { result});
+                    return finalResult;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failure calling google api - {ex}");
+                throw;
+            }
         }
     }
 }

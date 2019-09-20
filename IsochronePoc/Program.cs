@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using IsochronePoc.Application;
 using IsochronePoc.Application.GeoLocations;
@@ -48,11 +49,12 @@ namespace IsochronePoc
                 Console.WriteLine();
                 Console.WriteLine("Select an option using the number (or Enter for the default)");
                 Console.WriteLine("  1 = Run google search");
-                Console.WriteLine("  2 = Run TravelTime travel time search (default)");
-                Console.WriteLine("  3 = Run TravelTime travel time search (fast) (default)");
+                Console.WriteLine("  2 = Run TravelTime travel time search");
+                Console.WriteLine("  3 = Run TravelTime travel time search (fast)");
                 Console.WriteLine("  4 = Run TravelTime Isochrone search");
                 Console.WriteLine("  5 = Create sample SQL query from isochrone Run json");
                 Console.WriteLine("  6 = Lookup postcodes");
+                Console.WriteLine("  7 = Lookup distances from spreadsheet (google - default)");
                 Console.WriteLine("Press any other key to exit");
                 Console.WriteLine();
 
@@ -77,7 +79,6 @@ namespace IsochronePoc
                             break;
                         case ConsoleKey.D3:
                         case ConsoleKey.NumPad3:
-                        case ConsoleKey.Enter:
                             await GetTravelTimeFilterFastResult("CV1 2WT",
                                 52.400997M, -1.508122M,
                                 await GetVenuesFromCsv(liveVenuesFilePath));
@@ -94,6 +95,11 @@ namespace IsochronePoc
                         case ConsoleKey.NumPad6:
                             await LookupPostcodes(@".\Data\postcodes.csv");
                             break;
+                        case ConsoleKey.D7:
+                        case ConsoleKey.NumPad7:
+                        case ConsoleKey.Enter:
+                            await GetDistancesForOpportunitySpreadsheet(@".\Data\downloaded_opportunities.csv");
+                            break;
                         default:
                             return;
                     }
@@ -103,6 +109,68 @@ namespace IsochronePoc
                     Console.WriteLine($"{ex.Message}");
                 }
             } while (true);
+        }
+
+        private static async Task GetDistancesForOpportunitySpreadsheet(string path)
+        {
+            var journeys = await GetOpportunityJourneysFromCsv(path);
+
+            //var regex = new Regex(
+            //    @"([^ ]+\s+[^ ]+$)");
+
+            //var postcode = regex.Match(journey.Workplace).Groups[0].Captures[0];
+            //var destination = regex.Match(journey.ProviderVenue).Groups[0].Captures[0];
+
+            var client = new GoogleDistanceMatrixApiClient(new HttpClient(), Configuration);
+
+            //Might need to do this as a manual loop, so we can keep same structure as spreadsheet
+            
+            var resultsList = new List<Journey>();
+            var currentWorkplace = journeys.FirstOrDefault()?.Workplace;
+            var destinations = new List<Journey>();
+            //var travelMode = "driving";
+            var travelMode = "transit";
+            var last = journeys.Last();
+
+            foreach (var journey in journeys)
+            {
+                if (journey.Workplace == currentWorkplace)
+                {
+                    destinations.Add(journey);
+                }
+
+                if (journey.Workplace != currentWorkplace || journey == last)
+                {
+                    Console.WriteLine($"Workplace {currentWorkplace}");
+
+                    var searchResults = await client.SearchJourney(journey.Workplace, destinations, travelMode);
+
+                    foreach (var item in searchResults)
+                    {
+                        Console.WriteLine($"    time to {item.Address} {item.TravelTimeString}");
+                        resultsList.Add(new Journey
+                        {
+                            Workplace = currentWorkplace,
+                            ProviderVenue = item.Address,
+                            TravelTime = item.TravelTimeString
+                        });
+                    }
+
+                    currentWorkplace = journey.Workplace;
+                    destinations.Clear();
+                    destinations.Add(journey);
+                }
+            }
+
+            using (var writer = File.CreateText(@".\Data\journey_results.csv"))
+            {
+                await writer.WriteLineAsync("Workplace,Provider Venue,Travel Time");
+
+                foreach (var result in resultsList)
+                {
+                    await writer.WriteLineAsync($"{result.Workplace.Replace(",", "")},{result.ProviderVenue.Replace(",", "")},{result.TravelTime}");
+                }
+            }
         }
 
         private static void Configure()
@@ -383,6 +451,40 @@ namespace IsochronePoc
             }
 
             return venues;
+        }
+
+        public static async Task<IList<Journey>> GetOpportunityJourneysFromCsv(string path)
+        {
+            var journeys = new List<Journey>();
+
+            using (var reader = File.OpenText(path))
+            {
+                //2 header lines
+                await reader.ReadLineAsync();
+                await reader.ReadLineAsync();
+
+                while (!reader.EndOfStream)
+                {
+                    var line = await reader.ReadLineAsync();
+                    try
+                    {
+                        var split = line.Split(',');
+                        journeys.Add(new Journey
+                        {
+                            Workplace = split[0],
+                            ProviderVenue = split[4],
+                            Distance = split[5]
+                        });
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                        throw;
+                    }
+                }
+            }
+
+            return journeys;
         }
 
         public static async Task CreateSqlQueryFromJsonFile(string path)

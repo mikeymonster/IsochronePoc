@@ -341,3 +341,6 @@ healthchecksdb
 
 # exclude settings file with secrets
 IsochronePoc/appsettings.json
+
+# exclude sensitive data files
+IsochronePoc/Data/downloaded_opportunities.csv
