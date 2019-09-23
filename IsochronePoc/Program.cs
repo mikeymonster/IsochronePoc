@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using IsochronePoc.Application;
 using IsochronePoc.Application.GeoLocations;
@@ -54,7 +53,8 @@ namespace IsochronePoc
                 Console.WriteLine("  4 = Run TravelTime Isochrone search");
                 Console.WriteLine("  5 = Create sample SQL query from isochrone Run json");
                 Console.WriteLine("  6 = Lookup postcodes");
-                Console.WriteLine("  7 = Lookup distances from spreadsheet (google - default)");
+                Console.WriteLine("  7 = Driving distances from spreadsheet (google - default)");
+                Console.WriteLine("  8 = Transit distances from spreadsheet (google)");
                 Console.WriteLine("Press any other key to exit");
                 Console.WriteLine();
 
@@ -98,7 +98,11 @@ namespace IsochronePoc
                         case ConsoleKey.D7:
                         case ConsoleKey.NumPad7:
                         case ConsoleKey.Enter:
-                            await GetDistancesForOpportunitySpreadsheet(@".\Data\downloaded_opportunities.csv");
+                            await GetDistancesForOpportunitySpreadsheet(@".\Data\downloaded_opportunities.csv", GoogleTravelMode.Driving);
+                            break;
+                        case ConsoleKey.D8:
+                        case ConsoleKey.NumPad8:
+                            await GetDistancesForOpportunitySpreadsheet(@".\Data\downloaded_opportunities.csv", GoogleTravelMode.Transit);
                             break;
                         default:
                             return;
@@ -110,69 +114,7 @@ namespace IsochronePoc
                 }
             } while (true);
         }
-
-        private static async Task GetDistancesForOpportunitySpreadsheet(string path)
-        {
-            var journeys = await GetOpportunityJourneysFromCsv(path);
-
-            //var regex = new Regex(
-            //    @"([^ ]+\s+[^ ]+$)");
-
-            //var postcode = regex.Match(journey.Workplace).Groups[0].Captures[0];
-            //var destination = regex.Match(journey.ProviderVenue).Groups[0].Captures[0];
-
-            var client = new GoogleDistanceMatrixApiClient(new HttpClient(), Configuration);
-
-            //Might need to do this as a manual loop, so we can keep same structure as spreadsheet
-            
-            var resultsList = new List<Journey>();
-            var currentWorkplace = journeys.FirstOrDefault()?.Workplace;
-            var destinations = new List<Journey>();
-            //var travelMode = "driving";
-            var travelMode = "transit";
-            var last = journeys.Last();
-
-            foreach (var journey in journeys)
-            {
-                if (journey.Workplace == currentWorkplace)
-                {
-                    destinations.Add(journey);
-                }
-
-                if (journey.Workplace != currentWorkplace || journey == last)
-                {
-                    Console.WriteLine($"Workplace {currentWorkplace}");
-
-                    var searchResults = await client.SearchJourney(journey.Workplace, destinations, travelMode);
-
-                    foreach (var item in searchResults)
-                    {
-                        Console.WriteLine($"    time to {item.Address} {item.TravelTimeString}");
-                        resultsList.Add(new Journey
-                        {
-                            Workplace = currentWorkplace,
-                            ProviderVenue = item.Address,
-                            TravelTime = item.TravelTimeString
-                        });
-                    }
-
-                    currentWorkplace = journey.Workplace;
-                    destinations.Clear();
-                    destinations.Add(journey);
-                }
-            }
-
-            using (var writer = File.CreateText(@".\Data\journey_results.csv"))
-            {
-                await writer.WriteLineAsync("Workplace,Provider Venue,Travel Time");
-
-                foreach (var result in resultsList)
-                {
-                    await writer.WriteLineAsync($"{result.Workplace.Replace(",", "")},{result.ProviderVenue.Replace(",", "")},{result.TravelTime}");
-                }
-            }
-        }
-
+        
         private static void Configure()
         {
             var builder = new ConfigurationBuilder()
@@ -368,6 +310,102 @@ namespace IsochronePoc
             }
         }
 
+        private static async Task GetDistancesForOpportunitySpreadsheet(string path, string travelMode)
+        {
+            var journeys = await GetOpportunityJourneysFromCsv(path);
+
+            //Hack the postcodes out
+            foreach (var journey in journeys)
+            {
+                var workplaces = journey.Workplace.Split();
+                var n = workplaces.Length;
+                journey.Workplace = ExtractPostcode(journey.Workplace);
+                journey.ProviderVenue = ExtractPostcode(journey.ProviderVenue);
+            }
+
+            //var regex = new Regex(
+            //    @"([^ ]+\s+[^ ]+$)");
+            //var postcode = regex.Match(journey.Workplace).Groups[0].Captures[0];
+            //var destination = regex.Match(journey.ProviderVenue).Groups[0].Captures[0];
+
+            var client = new GoogleDistanceMatrixApiClient(new HttpClient(), Configuration);
+
+            var resultsList = new List<Journey>();
+            var destinations = new List<Journey>();
+            //var travelMode = GoogleTravelMode.Driving;
+            //var travelMode = GoogleTravelMode.Transit;
+
+            //Uncomment to filter
+            //journeys = journeys
+            //    .Where(j => j.Workplace == "WA14 1PH" && 
+            //                (j.ProviderVenue == "SK11 8LF" ||
+            //                 j.ProviderVenue == "SK17 6RY"))
+            //    .ToList();
+
+            var currentWorkplace = journeys.FirstOrDefault()?.Workplace;
+            var last = journeys.Last();
+
+            foreach (var journey in journeys)
+            {
+                if (journey.Workplace == currentWorkplace)
+                {
+                    destinations.Add(journey);
+                }
+
+                if (journey.Workplace != currentWorkplace || journey == last)
+                {
+                    Console.WriteLine($"Workplace {currentWorkplace}");
+
+                    var searchResults = await client.SearchJourney(currentWorkplace, destinations, travelMode);
+
+                    foreach (var item in searchResults)
+                    {
+                        Console.WriteLine($"    driving time to {item.Address} {item.TravelTimeString}");
+                        resultsList.Add(new Journey
+                        {
+                            Workplace = currentWorkplace,
+                            ProviderVenue = item.Address,
+                            TravelTime = item.TravelTimeString
+                        });
+                    }
+
+                    currentWorkplace = journey.Workplace;
+                    destinations.Clear();
+                    destinations.Add(journey);
+                }
+            }
+
+            Console.WriteLine($"Processed {journeys.Count} journeys, have {resultsList.Count} results");
+            var outputPath = $".\\Data\\journey_results_{travelMode}.csv";
+
+            using (var writer = File.CreateText($".\\Data\\journey_results_{travelMode}.csv"))
+            {
+                await writer.WriteLineAsync("Workplace,Provider Venue,Travel Time");
+                await writer.WriteLineAsync("");
+
+                foreach (var result in resultsList)
+                {
+                    await writer.WriteLineAsync($"{result.Workplace.Replace(",", "")},{result.ProviderVenue.Replace(",", "")},{result.TravelTime}");
+                }
+
+                Console.WriteLine($"Saved results to {outputPath}");
+            }
+        }
+
+        private static string ExtractPostcode(string address)
+        {
+            var workplaces = address.Split();
+            if (workplaces.Length < 2)
+            {
+                return null;
+            }
+
+            var n = workplaces[workplaces.Length -1] == "UK"
+                ? workplaces.Length - 1
+                : workplaces.Length;
+            return $"{workplaces[n - 2]} {workplaces[n - 1]}";
+        }
+
         private static async Task LookupPostcodes(string path)
         {
             var postcodes = await GetPostcodesFromCsv(path);
@@ -472,8 +510,8 @@ namespace IsochronePoc
                         journeys.Add(new Journey
                         {
                             Workplace = split[0],
-                            ProviderVenue = split[4],
-                            Distance = split[5]
+                            ProviderVenue = split[1],
+                            //Distance = split[5]
                         });
                     }
                     catch (Exception e)

@@ -370,13 +370,12 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
         }
 
         ///////////////////////////////
-        public async Task<IList<DistanceSearchResult>> SearchJourney(string workplaceKey, List<Journey> destinations, string travelMode = "driving")
+        public async Task<IList<DistanceSearchResult>> SearchJourney(string workplace, List<Journey> destinations, string travelMode = "driving")
         {
             try
             {
                 //https://developers.google.com/maps/documentation/distance-matrix/intro
-
-
+                
                 //BuildUri()
                 var uriBuilder = new StringBuilder($@"{_configuration.GoogleMapsApiBaseUrl}");
                 if (!_configuration.GoogleMapsApiBaseUrl.EndsWith("/"))
@@ -385,7 +384,7 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
                 }
                 uriBuilder.Append("distancematrix/json?");
 
-                uriBuilder.Append($"origins={workplaceKey}");
+                uriBuilder.Append($"origins={WebUtility.UrlEncode(workplace)}");
                 uriBuilder.Append($"&mode={travelMode}");
                 uriBuilder.Append("&destinations=");
 
@@ -400,10 +399,7 @@ namespace IsochronePoc.Application.GoogleDistanceMatrixApi
                 uriBuilder.Append($"&key={_configuration.GoogleMapsApiKey}");
 
                 var uri = uriBuilder.ToString();
-
-
-
-
+                
                 var stopwatch = Stopwatch.StartNew();
 
                 var response = await _httpClient.GetAsync(uri);

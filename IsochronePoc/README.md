@@ -1,5 +1,9 @@
 ﻿Sample data taken from https://blog.traveltimeplatform.com/use-an-isochrone-api-and-algorithm-in-your-isochrone-app (raw https://gist.githubusercontent.com/LouisaKB/c6e9eb3f62e067ec0026d7646bcbf9ef/raw/4b5d2ff41e72d0e1eb4358850868b306a02c34b2/JSON%20response)
 
+Google API documentation: https://developers.google.com/maps/documentation/distance-matrix/start
+
+Convert json to C# class - https://app.quicktype.io/#l=cs&r=json2csharp
+
 TravelTime Platform - 
 Get keys https://docs.traveltimeplatform.com/overview/getting-keys
 
@@ -26,10 +30,6 @@ WITH polygons
  FROM polygons
       RIGHT JOIN points ON polygons.poly.STIntersects(points.p) = 1
  WHERE polygons.id IS NOT NULL;
-
-Convert json to C# class - https://app.quicktype.io/#l=cs&r=json2csharp
-
-Google API documentation: https://developers.google.com/maps/documentation/distance-matrix/start
 
 
 # Notes on POC
