@@ -7,7 +7,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IsochronePoc", "IsochronePo
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IsochronePoc.Application", "IsochronePoc.Application\IsochronePoc.Application.csproj", "{A0E10A4E-B468-4415-859B-0BBFCFEB59C1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IsochronePoc.Application.Tests", "IsochronePoc.Application.Tests\IsochronePoc.Application.Tests.csproj", "{A5212FB6-40FE-4CDA-916D-B8810F4B7EE9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IsochronePoc.Application.Tests", "IsochronePoc.Application.Tests\IsochronePoc.Application.Tests.csproj", "{A5212FB6-40FE-4CDA-916D-B8810F4B7EE9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{2FECEE44-B552-4659-B9F7-B3053B43FF14}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
